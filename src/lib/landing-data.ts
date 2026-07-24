@@ -177,6 +177,7 @@ export const successStories: SuccessStory[] = [
 ];
 
 export const navLinks = [
+  { label: "Report", href: "#report" },
   { label: "How it works", href: "#how-it-works" },
   { label: "Categories", href: "#categories" },
   { label: "Impact", href: "#impact" },

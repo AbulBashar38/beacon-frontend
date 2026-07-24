@@ -53,10 +53,10 @@ export function Hero() {
             className="flex flex-col gap-3 sm:flex-row"
           >
             <Button asChild size="xl" variant="hero">
-              <Link href="/report">
+              <a href="#report">
                 Report an issue
                 <ArrowRight data-icon="inline-end" />
-              </Link>
+              </a>
             </Button>
             <Button asChild size="xl" variant="outline">
               <Link href="/track">

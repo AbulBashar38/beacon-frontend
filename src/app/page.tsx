@@ -1,6 +1,7 @@
 import { CitizenHeader } from "@/components/layout/citizen-header";
 import { CitizenFooter } from "@/components/layout/citizen-footer";
 import { Hero } from "@/components/landing/hero";
+import { ReportSection } from "@/components/landing/report-section";
 import { CategoriesSection } from "@/components/landing/categories-section";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { ImpactStats } from "@/components/landing/impact-stats";
@@ -13,6 +14,7 @@ export default function LandingPage() {
       <CitizenHeader />
       <main className="flex-1">
         <Hero />
+        <ReportSection />
         <HowItWorks />
         <CategoriesSection />
         <ImpactStats />
