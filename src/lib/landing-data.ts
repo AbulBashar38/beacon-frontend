@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   Camera,
+  CircleHelp,
   Construction,
   Droplets,
   Lightbulb,
@@ -63,6 +64,13 @@ export const issueCategories: IssueCategory[] = [
     description: "Open manholes, debris and other public safety risks.",
     icon: AlertTriangle,
     tone: "danger",
+  },
+  {
+    id: "other",
+    label: "Other",
+    description: "Any civic infrastructure problem not listed above.",
+    icon: CircleHelp,
+    tone: "primary",
   },
 ];
 

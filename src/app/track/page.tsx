@@ -7,6 +7,12 @@ export const metadata: Metadata = {
   description: "Track the public progress of a Beacon civic infrastructure report.",
 };
 
-export default function TrackPage() {
-  return <TrackingWorkspace />;
+export default async function TrackPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ code?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const code = Array.isArray(params.code) ? params.code[0] : params.code;
+  return <TrackingWorkspace initialCode={code ?? ""} />;
 }

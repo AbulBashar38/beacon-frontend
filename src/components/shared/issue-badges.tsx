@@ -3,7 +3,8 @@ import { cn } from "@/lib/utils";
 
 const statusStyles: Record<IssueStatus, string> = {
   New: "border-cyan-300/15 bg-cyan-400/10 text-cyan-300",
-  Acknowledged: "border-violet-300/15 bg-violet-400/10 text-violet-300",
+  "Under review": "border-violet-300/15 bg-violet-400/10 text-violet-300",
+  Assigned: "border-blue-300/15 bg-blue-400/10 text-blue-300",
   "In progress": "border-amber-300/15 bg-amber-400/10 text-amber-300",
   Resolved: "border-emerald-300/15 bg-emerald-400/10 text-emerald-300",
   Rejected: "border-slate-300/10 bg-slate-400/10 text-slate-400",

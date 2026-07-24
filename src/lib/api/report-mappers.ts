@@ -6,7 +6,7 @@ const categoryLabels: Record<ApiReport["category"], IssueCategory> = {
   broken_streetlight: "Streetlight",
   water_leak: "Water leak",
   illegal_dumping: "Waste",
-  other: "Road damage",
+  other: "Other",
 };
 
 const severityLabels: Record<NonNullable<ApiReport["severityLevel"]>, IssueSeverity> = {
@@ -18,8 +18,8 @@ const severityLabels: Record<NonNullable<ApiReport["severityLevel"]>, IssueSever
 
 const statusLabels: Record<ApiReport["status"], IssueStatus> = {
   pending: "New",
-  under_review: "Acknowledged",
-  assigned: "Acknowledged",
+  under_review: "Under review",
+  assigned: "Assigned",
   in_progress: "In progress",
   resolved: "Resolved",
   rejected: "Rejected",
@@ -51,7 +51,7 @@ const districtDivision: Record<string, string> = {
 function inferDistrict(location: string) {
   return Object.keys(districtDivision).find((district) =>
     location.toLowerCase().includes(district.toLowerCase()),
-  ) ?? "Dhaka";
+  ) ?? "Not specified";
 }
 
 function relativeTime(value: string) {
@@ -73,7 +73,7 @@ export function mapApiReportToAdminIssue(report: ApiReport): AdminIssue {
     severity: report.severityLevel ? severityLabels[report.severityLevel] : "Medium",
     location: report.locationText,
     district,
-    division: districtDivision[district] ?? "Dhaka",
+    division: districtDivision[district] ?? "Not specified",
     department: report.assignedDepartment ? departmentLabels[report.assignedDepartment] : "Unassigned",
     status: statusLabels[report.status],
     submittedAt: report.createdAt,

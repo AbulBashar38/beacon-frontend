@@ -32,6 +32,18 @@ export type ApiReport = {
   updatedAt: string;
 };
 
+export type ApiReportDetails = ApiReport & {
+  severityRationale: string | null;
+  suggestedAction?: string | null;
+  progressUpdates: Array<{
+    id: string;
+    status: ApiReportStatus;
+    note: string | null;
+    visibility: "public" | "internal";
+    createdAt: string;
+  }>;
+};
+
 export type ApiMeta = {
   page: number;
   limit: number;
@@ -54,7 +66,12 @@ export type ReportStats = {
 };
 
 export type TrackedReport = {
+  reportId: string;
   trackingCode: string;
+  description: string;
+  locationText: string;
+  latitude: number | null;
+  longitude: number | null;
   category: ApiReportCategory;
   summary: string;
   severity: {
@@ -67,7 +84,9 @@ export type TrackedReport = {
   language: "bn" | "en" | "unknown";
   images: string[];
   evidenceUrls: string[];
+  suggestedAction: string | null;
   createdAt: string;
+  updatedAt: string;
   progress: Array<{
     id: string;
     status: ApiReportStatus;
@@ -145,7 +164,23 @@ export const reportApi = {
   },
 
   async getById(id: string) {
-    const response = await apiClient.get<ApiResponse<ApiReport>>(`reports/${id}`);
+    const response = await apiClient.get<ApiResponse<ApiReportDetails>>(`reports/${id}`);
+    return response.data.data;
+  },
+
+  async updateStatus(
+    id: string,
+    input: { status: ApiReportStatus; note?: string; visibility?: "public" | "internal" },
+  ) {
+    const response = await apiClient.patch<ApiResponse<ApiReportDetails>>(`reports/${id}/status`, input);
+    return response.data.data;
+  },
+
+  async assignDepartment(
+    id: string,
+    input: { assignedDepartment: ApiDepartment; note?: string },
+  ) {
+    const response = await apiClient.patch<ApiResponse<ApiReportDetails>>(`reports/${id}/assign`, input);
     return response.data.data;
   },
 

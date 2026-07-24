@@ -73,6 +73,30 @@ export function IssuesWorkspace() {
     setSearch(""); setStatus("All statuses"); setSeverity("All severities"); setCategory("All categories"); setPage(1);
   }
 
+  function exportSelected() {
+    const rows = reports.filter((issue) => selected.includes(issue.id));
+    if (!rows.length) return;
+    const csv = [
+      ["Report ID", "Title", "Category", "Severity", "Location", "Department", "Status", "Submitted"],
+      ...rows.map((issue) => [
+        issue.trackingCode ?? issue.id,
+        issue.title,
+        issue.category,
+        issue.severity,
+        issue.location,
+        issue.department,
+        issue.status,
+        issue.submittedAt,
+      ]),
+    ].map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "beacon-issues.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-[radial-gradient(circle_at_15%_0%,rgba(20,184,166,.06),transparent_28%)] px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1600px]">
@@ -83,8 +107,8 @@ export function IssuesWorkspace() {
             <p className="mt-1 text-sm text-slate-500">Triage, assign and resolve citizen reports across Bangladesh.</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="border-white/10 bg-white/[0.035] text-slate-300 hover:bg-white/[0.06] hover:text-white" disabled={!selected.length}><Download /> Export {selected.length ? `(${selected.length})` : ""}</Button>
-            <Button className="bg-teal-400 text-slate-950 hover:bg-teal-300"><Filter /> Create report</Button>
+            <Button variant="outline" className="border-white/10 bg-white/[0.035] text-slate-300 hover:bg-white/[0.06] hover:text-white" disabled={!selected.length} onClick={exportSelected}><Download /> Export {selected.length ? `(${selected.length})` : ""}</Button>
+            <Button asChild className="bg-teal-400 text-slate-950 hover:bg-teal-300"><Link href="/#report"><Filter /> Create report</Link></Button>
           </div>
         </div>
 
@@ -120,15 +144,14 @@ export function IssuesWorkspace() {
             <div className="flex items-center gap-3 border-b border-teal-300/10 bg-teal-400/[0.06] px-4 py-2.5 text-xs">
               <span className="font-semibold text-teal-300">{selected.length} selected</span>
               <span className="h-4 w-px bg-white/10" />
-              <button className="text-slate-400 hover:text-white">Assign department</button>
-              <button className="text-slate-400 hover:text-white">Update status</button>
+              <span className="text-slate-500">Open a report to assign or update its status</span>
               <button onClick={() => setSelected([])} className="ml-auto text-slate-500 hover:text-white">Clear selection</button>
             </div>
           )}
 
           <div className="hidden overflow-x-auto lg:block">
-            <table className="w-full min-w-[1120px] border-collapse text-left">
-              <thead className="sticky top-16 z-10 bg-slate-900 text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-600">
+            <table className="w-full min-w-[1120px] border-separate border-spacing-0 text-left">
+              <thead className="sticky top-16 z-20 bg-slate-900 text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-600 shadow-[0_1px_0_rgba(255,255,255,0.07)]">
                 <tr className="border-b border-white/7">
                   <th className="w-12 px-4 py-3"><Checkbox checked={allVisibleSelected} onChange={() => setSelected(allVisibleSelected ? selected.filter((id) => !visible.some((issue) => issue.id === id)) : Array.from(new Set([...selected, ...visible.map((issue) => issue.id)])))} label="Select visible issues" /></th>
                   <th className="px-3 py-3">Issue</th>
@@ -171,10 +194,10 @@ function IssueRow({ issue, selected, onSelect }: { issue: AdminIssue; selected: 
   return (
     <tr className={cn("group transition hover:bg-white/[0.025]", selected && "bg-teal-400/[0.045]")}>
       <td className="px-4 py-3"><Checkbox checked={selected} onChange={onSelect} label={`Select ${issue.id}`} /></td>
-      <td className="max-w-[300px] px-3 py-3"><Link href={`/admin/issues/${issue.id}`} className="block"><span className="font-mono text-[9px] text-slate-600">{issue.id}</span><span className="mt-1 block truncate text-xs font-medium text-slate-200 group-hover:text-white">{issue.title}</span><span className="mt-1 block text-[10px] text-slate-600">Updated {issue.lastUpdated}</span></Link></td>
+      <td className="max-w-[300px] px-3 py-3"><Link href={`/admin/issues/${issue.id}`} className="block"><span className="font-mono text-[10px] font-medium text-teal-400">{issue.trackingCode ?? issue.id}</span><span className="mt-1 block truncate text-xs font-medium text-slate-200 group-hover:text-white">{issue.title}</span><span className="mt-1 block text-[10px] text-slate-600">Updated {issue.lastUpdated}</span></Link></td>
       <td className="px-3 py-3 text-[11px] text-slate-400">{issue.category}</td>
       <td className="px-3 py-3"><SeverityBadge severity={issue.severity} /></td>
-      <td className="px-3 py-3"><span className="block text-[11px] text-slate-300">{issue.location}</span><span className="mt-0.5 block text-[9px] text-slate-600">{issue.district} · {issue.division}</span></td>
+      <td className="max-w-[260px] px-3 py-3"><span className="line-clamp-2 text-[11px] leading-5 text-slate-300">{issue.location}</span>{issue.district !== "Not specified" ? <span className="mt-0.5 block text-[9px] text-slate-600">{issue.district} · {issue.division}</span> : null}</td>
       <td className="max-w-[170px] px-3 py-3 text-[10px] text-slate-400"><span className="line-clamp-2">{issue.department}</span></td>
       <td className="px-3 py-3"><StatusBadge status={issue.status} /></td>
       <td className="px-3 py-3 font-mono text-[10px] text-slate-500">{formatDate(issue.submittedAt)}</td>
@@ -189,9 +212,9 @@ function IssueMobileCard({ issue, selected, onSelect }: { issue: AdminIssue; sel
       <div className="flex items-start gap-3">
         <Checkbox checked={selected} onChange={onSelect} label={`Select ${issue.id}`} />
         <Link href={`/admin/issues/${issue.id}`} className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2"><span className="font-mono text-[9px] text-slate-600">{issue.id}</span><span className="font-mono text-[9px] text-slate-600">{formatDate(issue.submittedAt)}</span></div>
+          <div className="flex items-center justify-between gap-2"><span className="font-mono text-[10px] font-medium text-teal-400">{issue.trackingCode ?? issue.id}</span><span className="font-mono text-[9px] text-slate-600">{formatDate(issue.submittedAt)}</span></div>
           <h2 className="mt-1.5 text-sm font-medium leading-snug text-slate-100">{issue.title}</h2>
-          <p className="mt-1 text-[10px] text-slate-500">{issue.location}, {issue.district} · {issue.category}</p>
+          <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-500">{issue.location} · {issue.category}</p>
           <div className="mt-3 flex flex-wrap gap-2"><SeverityBadge severity={issue.severity} /><StatusBadge status={issue.status} /></div>
         </Link>
       </div>

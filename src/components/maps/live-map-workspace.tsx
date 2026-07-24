@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import Map, {
   FullscreenControl,
   Layer,
@@ -126,7 +127,8 @@ export function LiveMapWorkspace() {
   const { reports, loading: reportsLoading, error: reportsError, reload } = useReports({ limit: 100, sortBy: "createdAt", sortOrder: "desc" }, 15_000);
   const mapRef = useRef<MapRef>(null);
   const shouldFitAfterFilter = useRef(false);
-  const [mode, setMode] = useState<MapMode>("heat");
+  const hasFitInitialData = useRef(false);
+  const [mode, setMode] = useState<MapMode>("markers");
   const [filterOpen, setFilterOpen] = useState(true);
   const [selected, setSelected] = useState<SelectedContext | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -147,6 +149,7 @@ export function LiveMapWorkspace() {
     (department === "All departments" || issue.department === department)
   ), [category, department, district, division, reports, severity, status]);
   const geojson = useMemo(() => createIssueMapData(filteredIssues), [filteredIssues]);
+  const unmappedCount = filteredIssues.length - geojson.features.length;
   const divisions = useMemo(() => ["All divisions", ...Array.from(new Set(reports.map((issue) => issue.division))).sort()], [reports]);
   const districts = useMemo(() => ["All districts", ...Array.from(new Set(reports.map((issue) => issue.district))).sort()], [reports]);
   const departments = useMemo(() => ["All departments", ...Array.from(new Set(reports.map((issue) => issue.department))).sort()], [reports]);
@@ -155,8 +158,10 @@ export function LiveMapWorkspace() {
   const interactiveIds = mode === "clusters" ? ["live-clusters", "live-markers"] : mode === "heat" ? [] : [mode === "severity" ? "live-severity" : mode === "districts" ? "live-districts" : "live-markers"];
 
   useEffect(() => {
-    if (!shouldFitAfterFilter.current || !loaded || !geojson.features.length) return;
+    const needsInitialFit = !hasFitInitialData.current && geojson.features.length > 0;
+    if ((!shouldFitAfterFilter.current && !needsInitialFit) || !loaded || !geojson.features.length) return;
     shouldFitAfterFilter.current = false;
+    hasFitInitialData.current = true;
 
     const coordinates = geojson.features.map((feature) => feature.geometry.coordinates);
     if (coordinates.length === 1) {
@@ -249,12 +254,13 @@ export function LiveMapWorkspace() {
       {!loaded && <div className="absolute inset-0 z-50 grid place-items-center bg-slate-950"><div className="text-center"><span className="mx-auto block size-8 animate-spin rounded-full border-2 border-teal-300 border-t-transparent" /><p className="mt-3 text-xs text-slate-400">Connecting to national issue grid…</p></div></div>}
       {reportsError && <div role="alert" className="absolute left-1/2 top-28 z-40 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-red-300/15 bg-slate-950/95 px-4 py-3 text-xs text-red-300 shadow-2xl"><span>{reportsError}</span><button onClick={() => void reload()} className="font-semibold text-white hover:text-teal-300">Retry</button></div>}
       {reportsLoading && loaded && <div className="absolute left-1/2 top-4 z-30 -translate-x-1/2 rounded-full border border-white/10 bg-slate-950/90 px-3 py-1.5 text-[10px] text-teal-300 shadow-lg">Syncing live reports…</div>}
+      {!reportsLoading && !reportsError && loaded && geojson.features.length === 0 && <div className="absolute left-1/2 top-28 z-30 w-[min(420px,calc(100%-2rem))] -translate-x-1/2 rounded-xl border border-amber-300/15 bg-slate-950/95 px-4 py-3 text-center text-xs text-amber-200 shadow-2xl">No reports with coordinates match this view. Select a map location when submitting a report to display it here.</div>}
 
       <header className="pointer-events-none absolute left-4 right-4 top-4 z-20 flex items-start justify-between gap-4">
         <div className="pointer-events-auto rounded-xl border border-white/10 bg-slate-950/90 px-4 py-3 shadow-2xl backdrop-blur-xl">
           <div className="flex items-center gap-2"><span className="relative flex size-2"><span className="absolute inline-flex size-full animate-ping rounded-full bg-teal-400 opacity-50" /><span className="relative size-2 rounded-full bg-teal-400" /></span><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-teal-300">Live national map</p></div>
           <p className="mt-1 font-heading text-base font-bold text-white">{filteredIssues.length} visible infrastructure issues</p>
-          <p className="mt-0.5 text-[10px] text-slate-500">Updated 40 seconds ago · 64 districts online</p>
+          <p className="mt-0.5 text-[10px] text-slate-500">{geojson.features.length} mapped from live API coordinates{unmappedCount ? ` · ${unmappedCount} missing coordinates` : ""}</p>
         </div>
         <Button variant="outline" className="pointer-events-auto border-white/10 bg-slate-950/90 text-slate-300 shadow-xl backdrop-blur hover:bg-slate-900 hover:text-white" onClick={() => setFilterOpen((value) => !value)}><Filter /> Filters</Button>
       </header>
@@ -315,10 +321,10 @@ function IntelligenceDrawer({ selected, visibleIssues, onClose }: { selected: Se
         </div>
         <div className="border-y border-white/8 px-4 py-4">
           <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-600">Status breakdown</p>
-          <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-white/5"><span className="bg-cyan-400" style={{ width: `${percent(related, "New")}%` }} /><span className="bg-violet-400" style={{ width: `${percent(related, "Acknowledged")}%` }} /><span className="bg-amber-400" style={{ width: `${percent(related, "In progress")}%` }} /><span className="bg-emerald-400" style={{ width: `${percent(related, "Resolved")}%` }} /></div>
-          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-slate-500"><span>New {percent(related, "New")}%</span><span>Acknowledged {percent(related, "Acknowledged")}%</span><span>Active {percent(related, "In progress")}%</span><span>Resolved {percent(related, "Resolved")}%</span></div>
+          <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-white/5"><span className="bg-cyan-400" style={{ width: `${percent(related, "New")}%` }} /><span className="bg-violet-400" style={{ width: `${percent(related, "Under review")}%` }} /><span className="bg-blue-400" style={{ width: `${percent(related, "Assigned")}%` }} /><span className="bg-amber-400" style={{ width: `${percent(related, "In progress")}%` }} /><span className="bg-emerald-400" style={{ width: `${percent(related, "Resolved")}%` }} /></div>
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-slate-500"><span>New {percent(related, "New")}%</span><span>Review {percent(related, "Under review")}%</span><span>Assigned {percent(related, "Assigned")}%</span><span>Active {percent(related, "In progress")}%</span><span>Resolved {percent(related, "Resolved")}%</span></div>
         </div>
-        <div className="p-4"><p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-600">Recent reports</p><div className="mt-2 space-y-2">{related.slice(0, 5).map((issue) => <div key={issue.id} className="rounded-xl border border-white/7 bg-white/[0.025] p-3"><div className="flex items-center justify-between gap-2"><span className="font-mono text-[9px] text-slate-600">{issue.id}</span><SeverityBadge severity={issue.severity} /></div><p className="mt-2 text-xs font-medium leading-relaxed text-slate-200">{issue.title}</p><div className="mt-2 flex items-center justify-between"><span className="text-[9px] text-slate-500">{issue.location}</span><StatusBadge status={issue.status} /></div></div>)}</div></div>
+        <div className="p-4"><p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-600">Recent reports</p><div className="mt-2 space-y-2">{related.slice(0, 5).map((issue) => <Link href={`/admin/issues/${issue.id}`} key={issue.id} className="block rounded-xl border border-white/7 bg-white/[0.025] p-3 transition hover:border-teal-300/20 hover:bg-white/[0.045]"><div className="flex items-center justify-between gap-2"><span className="font-mono text-[9px] text-teal-400">{issue.trackingCode ?? issue.id}</span><SeverityBadge severity={issue.severity} /></div><p className="mt-2 text-xs font-medium leading-relaxed text-slate-200">{issue.title}</p><div className="mt-2 flex items-center justify-between gap-2"><span className="line-clamp-1 text-[9px] text-slate-500">{issue.location}</span><StatusBadge status={issue.status} /></div></Link>)}</div></div>
       </div>
     </aside>
   );

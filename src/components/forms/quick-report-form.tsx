@@ -30,7 +30,7 @@ import { reverseGeocodeBangladesh } from "@/lib/mapbox-geocoding";
 import { uploadReportImage } from "@/lib/cloudinary-upload";
 
 const schema = z.object({
-  category: z.string().min(1, "Choose the type of issue"),
+  category: z.string().optional(),
   title: z
     .string()
     .min(6, "Add a short, clear title (at least 6 characters)")
@@ -67,6 +67,7 @@ const apiCategory: Record<string, ApiReportCategory> = {
   dumping: "illegal_dumping",
   drainage: "other",
   "road-hazard": "other",
+  other: "other",
 };
 
 export function QuickReportForm() {
@@ -167,7 +168,7 @@ export function QuickReportForm() {
         description: `${values.title}\n\n${values.description}`,
         locationText: values.location,
         contact: values.contact || undefined,
-        category: apiCategory[values.category] ?? "other",
+        category: values.category ? (apiCategory[values.category] ?? "other") : undefined,
         language: "en",
         latitude: coordinates?.latitude,
         longitude: coordinates?.longitude,
@@ -226,8 +227,7 @@ export function QuickReportForm() {
             {/* category */}
             <Field
               label="What's the problem?"
-              error={errors.category?.message}
-              required
+              hint="Optional — AI will validate the final category"
             >
               <input type="hidden" {...register("category")} />
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -514,7 +514,7 @@ function SuccessState({
 
       <div className="w-full max-w-xs rounded-2xl border border-border bg-surface-muted/50 p-4">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Public tracking code
+          Public report ID
         </p>
         <div className="mt-2 flex items-center justify-center gap-2">
           <span className="font-mono text-xl font-semibold tracking-tight">
@@ -535,13 +535,13 @@ function SuccessState({
           </Button>
         </div>
         <p className="mt-3 border-t border-border pt-3 font-mono text-xs text-muted-foreground">
-          Report ID: {reportId}
+          Internal reference: {reportId}
         </p>
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row">
         <Button asChild size="lg" variant="outline">
-          <a href="/track">Track this report</a>
+          <a href={`/track?code=${encodeURIComponent(code)}`}>View this report</a>
         </Button>
         <Button type="button" size="lg" variant="ghost" onClick={onReset}>
           Report another issue
