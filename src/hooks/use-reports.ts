@@ -14,8 +14,8 @@ export function useReports(query: ReportQuery = { limit: 100 }, refreshIntervalM
   const [error, setError] = useState<string | null>(null);
   const queryKey = JSON.stringify(query);
 
-  const reload = useCallback(async () => {
-    setLoading(true);
+  const reload = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
       const result = await reportApi.list(JSON.parse(queryKey) as ReportQuery);
@@ -24,7 +24,7 @@ export function useReports(query: ReportQuery = { limit: 100 }, refreshIntervalM
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, "Unable to load reports."));
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [queryKey]);
 
@@ -60,7 +60,7 @@ export function useReports(query: ReportQuery = { limit: 100 }, refreshIntervalM
   useEffect(() => {
     if (!refreshIntervalMs) return;
     const interval = window.setInterval(() => {
-      void reload();
+      if (document.visibilityState === "visible") void reload(false);
     }, refreshIntervalMs);
     return () => window.clearInterval(interval);
   }, [refreshIntervalMs, reload]);

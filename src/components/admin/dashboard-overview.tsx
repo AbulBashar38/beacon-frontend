@@ -26,7 +26,7 @@ const categoryColors = ["#2dd4bf", "#38bdf8", "#fbbf24", "#a78bfa", "#fb7185"];
 export function DashboardOverview() {
   const { user } = useAuth();
   const [downloading, setDownloading] = useState(false);
-  const { reports, error: reportsError, reload: reloadReports } = useReports({ limit: 100, sortBy: "createdAt", sortOrder: "desc" }, 30_000);
+  const { reports, error: reportsError, reload: reloadReports } = useReports({ limit: 100, sortBy: "createdAt", sortOrder: "desc" });
   const { stats, error: statsError, reload: reloadStats } = useReportStats();
   const criticalIssues = reports.filter((issue) => issue.severity === "Critical" && issue.status !== "Resolved" && issue.status !== "Rejected").slice(0, 3);
   const metrics = dashboardMetrics.map((metric) => {
