@@ -11,7 +11,6 @@ import {
   Filter,
   MoreHorizontal,
   Search,
-  SlidersHorizontal,
   X,
   RefreshCw,
 } from "lucide-react";
@@ -32,7 +31,7 @@ type SortKey = "submittedAt" | "severity" | "status";
 const PAGE_SIZE = 10;
 const statusQuery: Record<string, ApiReportStatus> = { New: "pending", "Under review": "under_review", Assigned: "assigned", "In progress": "in_progress", Resolved: "resolved", Rejected: "rejected" };
 const severityQuery: Record<string, ApiSeverity> = { Critical: "critical", High: "high", Medium: "medium", Low: "low" };
-const categoryQuery: Record<string, ApiReportCategory> = { "Road damage": "pothole", Streetlight: "broken_streetlight", Waste: "illegal_dumping", "Water leak": "water_leak", Drainage: "other", Other: "other" };
+const categoryQuery: Record<string, ApiReportCategory> = { "Road damage": "pothole", Streetlight: "broken_streetlight", Waste: "illegal_dumping", "Water leak": "water_leak", Other: "other" };
 
 export function IssuesWorkspace() {
   const [search, setSearch] = useState("");
@@ -65,10 +64,12 @@ export function IssuesWorkspace() {
   function toggleSort(next: SortKey) {
     if (sortKey === next) setSortDesc((value) => !value);
     else { setSortKey(next); setSortDesc(true); }
+    setPage(1);
+    setSelected([]);
   }
 
   function clearFilters() {
-    setSearch(""); setStatus("All statuses"); setSeverity("All severities"); setCategory("All categories"); setPage(1);
+    setSearch(""); setStatus("All statuses"); setSeverity("All severities"); setCategory("All categories"); setPage(1); setSelected([]);
   }
 
   function exportSelected() {
@@ -118,14 +119,13 @@ export function IssuesWorkspace() {
               <label className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-600" />
                 <span className="sr-only">Search issues</span>
-                <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search by report ID, title, location or department…" className="h-10 w-full rounded-lg border border-white/8 bg-slate-950/60 pl-9 pr-3 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-teal-400/40 focus:ring-2 focus:ring-teal-400/10" />
+                <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); setSelected([]); }} placeholder="Search by report ID, description or location…" className="h-10 w-full rounded-lg border border-white/8 bg-slate-950/60 pl-9 pr-3 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-teal-400/40 focus:ring-2 focus:ring-teal-400/10" />
               </label>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <FilterSelect label="Status" value={status} options={issueStatuses} onChange={(value) => { setStatus(value); setPage(1); }} />
-                <FilterSelect label="Severity" value={severity} options={issueSeverities} onChange={(value) => { setSeverity(value); setPage(1); }} />
-                <FilterSelect label="Category" value={category} options={issueCategories} onChange={(value) => { setCategory(value); setPage(1); }} />
+                <FilterSelect label="Status" value={status} options={issueStatuses} onChange={(value) => { setStatus(value); setPage(1); setSelected([]); }} />
+                <FilterSelect label="Severity" value={severity} options={issueSeverities} onChange={(value) => { setSeverity(value); setPage(1); setSelected([]); }} />
+                <FilterSelect label="Category" value={category} options={issueCategories} onChange={(value) => { setCategory(value); setPage(1); setSelected([]); }} />
               </div>
-              <Button variant="outline" className="border-white/10 bg-white/[0.035] text-slate-400 hover:bg-white/[0.06] hover:text-white"><SlidersHorizontal /> Columns</Button>
             </div>
 
             {(activeFilters.length > 0 || search) && (
@@ -177,9 +177,9 @@ export function IssuesWorkspace() {
           <footer className="flex flex-col gap-3 border-t border-white/7 px-4 py-3 text-[11px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
             <p>Showing {visible.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0}–{Math.min(currentPage * PAGE_SIZE, meta.total)} of {meta.total} issues</p>
             <div className="flex items-center gap-2">
-              <button disabled={currentPage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))} className="grid size-8 place-items-center rounded-lg border border-white/8 text-slate-400 disabled:opacity-30 hover:not-disabled:bg-white/5" aria-label="Previous page"><ChevronLeft className="size-4" /></button>
+              <button disabled={currentPage === 1} onClick={() => { setPage((value) => Math.max(1, value - 1)); setSelected([]); }} className="grid size-8 place-items-center rounded-lg border border-white/8 text-slate-400 disabled:opacity-30 hover:not-disabled:bg-white/5" aria-label="Previous page"><ChevronLeft className="size-4" /></button>
               <span className="px-2 font-mono text-[10px] text-slate-400">Page {currentPage} / {pageCount}</span>
-              <button disabled={currentPage === pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))} className="grid size-8 place-items-center rounded-lg border border-white/8 text-slate-400 disabled:opacity-30 hover:not-disabled:bg-white/5" aria-label="Next page"><ChevronRight className="size-4" /></button>
+              <button disabled={currentPage === pageCount} onClick={() => { setPage((value) => Math.min(pageCount, value + 1)); setSelected([]); }} className="grid size-8 place-items-center rounded-lg border border-white/8 text-slate-400 disabled:opacity-30 hover:not-disabled:bg-white/5" aria-label="Next page"><ChevronRight className="size-4" /></button>
             </div>
           </footer>
         </section>

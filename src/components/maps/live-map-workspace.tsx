@@ -124,7 +124,7 @@ const modes: Array<{ id: MapMode; label: string; icon: typeof Layers3 }> = [
 ];
 
 export function LiveMapWorkspace() {
-  const { reports, loading: reportsLoading, error: reportsError, reload } = useReports({ limit: 100, sortBy: "createdAt", sortOrder: "desc" }, 15_000);
+  const { reports, loading: reportsLoading, error: reportsError, reload } = useReports({ limit: 500, sortBy: "createdAt", sortOrder: "desc" }, 15_000);
   const mapRef = useRef<MapRef>(null);
   const shouldFitAfterFilter = useRef(false);
   const hasFitInitialData = useRef(false);
@@ -151,7 +151,14 @@ export function LiveMapWorkspace() {
   const geojson = useMemo(() => createIssueMapData(filteredIssues), [filteredIssues]);
   const unmappedCount = filteredIssues.length - geojson.features.length;
   const divisions = useMemo(() => ["All divisions", ...Array.from(new Set(reports.map((issue) => issue.division))).sort()], [reports]);
-  const districts = useMemo(() => ["All districts", ...Array.from(new Set(reports.map((issue) => issue.district))).sort()], [reports]);
+  const districts = useMemo(() => [
+    "All districts",
+    ...Array.from(new Set(
+      reports
+        .filter((issue) => division === "All divisions" || issue.division === division)
+        .map((issue) => issue.district),
+    )).sort(),
+  ], [division, reports]);
   const departments = useMemo(() => ["All departments", ...Array.from(new Set(reports.map((issue) => issue.department))).sort()], [reports]);
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
   const style = process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? "mapbox://styles/mapbox/dark-v11";
@@ -273,7 +280,7 @@ export function LiveMapWorkspace() {
       </div>
 
       <MapLegend mode={mode} />
-      {filterOpen && <MapFilters category={category} severity={severity} status={status} division={division} district={district} department={department} divisions={divisions} districts={districts} departments={departments} setCategory={(value) => updateFilter(setCategory, value)} setSeverity={(value) => updateFilter(setSeverity, value)} setStatus={(value) => updateFilter(setStatus, value)} setDivision={(value) => updateFilter(setDivision, value)} setDistrict={(value) => updateFilter(setDistrict, value)} setDepartment={(value) => updateFilter(setDepartment, value)} onReset={resetFilters} onClose={() => setFilterOpen(false)} resultCount={filteredIssues.length} />}
+      {filterOpen && <MapFilters category={category} severity={severity} status={status} division={division} district={district} department={department} divisions={divisions} districts={districts} departments={departments} setCategory={(value) => updateFilter(setCategory, value)} setSeverity={(value) => updateFilter(setSeverity, value)} setStatus={(value) => updateFilter(setStatus, value)} setDivision={(value) => { shouldFitAfterFilter.current = true; setSelected(null); setDivision(value); setDistrict("All districts"); }} setDistrict={(value) => updateFilter(setDistrict, value)} setDepartment={(value) => updateFilter(setDepartment, value)} onReset={resetFilters} onClose={() => setFilterOpen(false)} resultCount={filteredIssues.length} />}
       {selected && <IntelligenceDrawer selected={selected} visibleIssues={filteredIssues} onClose={() => setSelected(null)} />}
     </main>
   );

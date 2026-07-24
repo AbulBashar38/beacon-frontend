@@ -37,4 +37,6 @@ export const adminIssues: AdminIssue[] = [
 
 export const issueStatuses: Array<IssueStatus | "All statuses"> = ["All statuses", "New", "Under review", "Assigned", "In progress", "Resolved", "Rejected"];
 export const issueSeverities: Array<IssueSeverity | "All severities"> = ["All severities", "Critical", "High", "Medium", "Low"];
-export const issueCategories: Array<IssueCategory | "All categories"> = ["All categories", "Road damage", "Drainage", "Streetlight", "Waste", "Water leak", "Other"];
+// Only expose categories that the report API can distinguish. Drainage reports
+// currently belong to the backend's broader `other` category.
+export const issueCategories: Array<IssueCategory | "All categories"> = ["All categories", "Road damage", "Streetlight", "Waste", "Water leak", "Other"];
