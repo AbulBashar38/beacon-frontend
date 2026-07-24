@@ -13,6 +13,14 @@ The repository contains both applications:
 └── backend/   Express, Prisma, and PostgreSQL API
 ```
 
+## Project links
+
+| Resource | URL |
+| --- | --- |
+| Live application | [beacon-frontend-mu.vercel.app](https://beacon-frontend-mu.vercel.app/) |
+| GitHub repository | [AbulBashar38/beacon-frontend](https://github.com/AbulBashar38/beacon-frontend) |
+| Database ERD | [Beacon ERD on DrawSQL](https://drawsql.app/teams/abul-basar/diagrams/beacon) |
+
 ## What Beacon does
 
 ### Citizen experience
@@ -89,6 +97,11 @@ instead of losing the citizen submission.
 - Nodemailer with generic SMTP
 - Vitest and Supertest
 - Swagger UI
+
+## Database design
+
+The database relationships and report lifecycle entities are documented in the
+[Beacon entity-relationship diagram on DrawSQL](https://drawsql.app/teams/abul-basar/diagrams/beacon).
 
 ## Application routes
 
