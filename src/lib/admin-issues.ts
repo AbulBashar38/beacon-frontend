@@ -1,4 +1,4 @@
-export type IssueStatus = "New" | "Acknowledged" | "In progress" | "Resolved";
+export type IssueStatus = "New" | "Acknowledged" | "In progress" | "Resolved" | "Rejected";
 export type IssueSeverity = "Critical" | "High" | "Medium" | "Low";
 export type IssueCategory = "Road damage" | "Drainage" | "Streetlight" | "Waste" | "Water leak";
 
@@ -14,6 +14,10 @@ export type AdminIssue = {
   status: IssueStatus;
   submittedAt: string;
   lastUpdated: string;
+  trackingCode?: string;
+  description?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 export const adminIssues: AdminIssue[] = [
@@ -31,6 +35,6 @@ export const adminIssues: AdminIssue[] = [
   { id: "BCN-BOG-6103", title: "Non-functional crossing lights at intersection", category: "Streetlight", severity: "High", location: "Satmatha", district: "Bogura", division: "Rajshahi", department: "Bogura Municipality", status: "In progress", submittedAt: "2026-07-21T19:31:00+06:00", lastUpdated: "Yesterday" },
 ];
 
-export const issueStatuses: Array<IssueStatus | "All statuses"> = ["All statuses", "New", "Acknowledged", "In progress", "Resolved"];
+export const issueStatuses: Array<IssueStatus | "All statuses"> = ["All statuses", "New", "Acknowledged", "In progress", "Resolved", "Rejected"];
 export const issueSeverities: Array<IssueSeverity | "All severities"> = ["All severities", "Critical", "High", "Medium", "Low"];
 export const issueCategories: Array<IssueCategory | "All categories"> = ["All categories", "Road damage", "Drainage", "Streetlight", "Waste", "Water leak"];

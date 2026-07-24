@@ -34,7 +34,10 @@ export function createIssueMapData(issues: AdminIssue[]): FeatureCollection<Poin
   return {
     type: "FeatureCollection",
     features: issues.map((issue, index) => {
-      const base = districtCoordinates[issue.district] ?? [90.35, 23.75];
+      const base: [number, number] =
+        issue.longitude != null && issue.latitude != null
+          ? [issue.longitude, issue.latitude]
+          : (districtCoordinates[issue.district] ?? [90.35, 23.75]);
       const offset = coordinateOffsets[index % coordinateOffsets.length];
       return {
         type: "Feature",

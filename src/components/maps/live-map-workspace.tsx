@@ -27,8 +27,9 @@ import {
 
 import { SeverityBadge, StatusBadge } from "@/components/shared/issue-badges";
 import { Button } from "@/components/ui/button";
+import { useReports } from "@/hooks/use-reports";
 import { createIssueMapData } from "@/lib/admin-map-data";
-import { adminIssues, issueCategories, issueSeverities, issueStatuses, type AdminIssue } from "@/lib/admin-issues";
+import { issueCategories, issueSeverities, issueStatuses, type AdminIssue } from "@/lib/admin-issues";
 import { cn } from "@/lib/utils";
 
 type MapMode = "heat" | "markers" | "clusters" | "districts" | "severity";
@@ -121,11 +122,8 @@ const modes: Array<{ id: MapMode; label: string; icon: typeof Layers3 }> = [
   { id: "severity", label: "Severity", icon: ShieldAlert },
 ];
 
-const divisions = ["All divisions", ...Array.from(new Set(adminIssues.map((issue) => issue.division))).sort()];
-const districts = ["All districts", ...Array.from(new Set(adminIssues.map((issue) => issue.district))).sort()];
-const departments = ["All departments", ...Array.from(new Set(adminIssues.map((issue) => issue.department))).sort()];
-
 export function LiveMapWorkspace() {
+  const { reports, loading: reportsLoading, error: reportsError, reload } = useReports({ limit: 100, sortBy: "createdAt", sortOrder: "desc" }, 15_000);
   const mapRef = useRef<MapRef>(null);
   const shouldFitAfterFilter = useRef(false);
   const [mode, setMode] = useState<MapMode>("heat");
@@ -140,15 +138,18 @@ export function LiveMapWorkspace() {
   const [district, setDistrict] = useState("All districts");
   const [department, setDepartment] = useState("All departments");
 
-  const filteredIssues = useMemo(() => adminIssues.filter((issue) =>
+  const filteredIssues = useMemo(() => reports.filter((issue) =>
     (category === "All categories" || issue.category === category) &&
     (severity === "All severities" || issue.severity === severity) &&
     (status === "All statuses" || issue.status === status) &&
     (division === "All divisions" || issue.division === division) &&
     (district === "All districts" || issue.district === district) &&
     (department === "All departments" || issue.department === department)
-  ), [category, department, district, division, severity, status]);
+  ), [category, department, district, division, reports, severity, status]);
   const geojson = useMemo(() => createIssueMapData(filteredIssues), [filteredIssues]);
+  const divisions = useMemo(() => ["All divisions", ...Array.from(new Set(reports.map((issue) => issue.division))).sort()], [reports]);
+  const districts = useMemo(() => ["All districts", ...Array.from(new Set(reports.map((issue) => issue.district))).sort()], [reports]);
+  const departments = useMemo(() => ["All departments", ...Array.from(new Set(reports.map((issue) => issue.department))).sort()], [reports]);
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
   const style = process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? "mapbox://styles/mapbox/dark-v11";
   const interactiveIds = mode === "clusters" ? ["live-clusters", "live-markers"] : mode === "heat" ? [] : [mode === "severity" ? "live-severity" : mode === "districts" ? "live-districts" : "live-markers"];
@@ -246,6 +247,8 @@ export function LiveMapWorkspace() {
       </Map>
 
       {!loaded && <div className="absolute inset-0 z-50 grid place-items-center bg-slate-950"><div className="text-center"><span className="mx-auto block size-8 animate-spin rounded-full border-2 border-teal-300 border-t-transparent" /><p className="mt-3 text-xs text-slate-400">Connecting to national issue grid…</p></div></div>}
+      {reportsError && <div role="alert" className="absolute left-1/2 top-28 z-40 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-red-300/15 bg-slate-950/95 px-4 py-3 text-xs text-red-300 shadow-2xl"><span>{reportsError}</span><button onClick={() => void reload()} className="font-semibold text-white hover:text-teal-300">Retry</button></div>}
+      {reportsLoading && loaded && <div className="absolute left-1/2 top-4 z-30 -translate-x-1/2 rounded-full border border-white/10 bg-slate-950/90 px-3 py-1.5 text-[10px] text-teal-300 shadow-lg">Syncing live reports…</div>}
 
       <header className="pointer-events-none absolute left-4 right-4 top-4 z-20 flex items-start justify-between gap-4">
         <div className="pointer-events-auto rounded-xl border border-white/10 bg-slate-950/90 px-4 py-3 shadow-2xl backdrop-blur-xl">
@@ -264,7 +267,7 @@ export function LiveMapWorkspace() {
       </div>
 
       <MapLegend mode={mode} />
-      {filterOpen && <MapFilters category={category} severity={severity} status={status} division={division} district={district} department={department} setCategory={(value) => updateFilter(setCategory, value)} setSeverity={(value) => updateFilter(setSeverity, value)} setStatus={(value) => updateFilter(setStatus, value)} setDivision={(value) => updateFilter(setDivision, value)} setDistrict={(value) => updateFilter(setDistrict, value)} setDepartment={(value) => updateFilter(setDepartment, value)} onReset={resetFilters} onClose={() => setFilterOpen(false)} resultCount={filteredIssues.length} />}
+      {filterOpen && <MapFilters category={category} severity={severity} status={status} division={division} district={district} department={department} divisions={divisions} districts={districts} departments={departments} setCategory={(value) => updateFilter(setCategory, value)} setSeverity={(value) => updateFilter(setSeverity, value)} setStatus={(value) => updateFilter(setStatus, value)} setDivision={(value) => updateFilter(setDivision, value)} setDistrict={(value) => updateFilter(setDistrict, value)} setDepartment={(value) => updateFilter(setDepartment, value)} onReset={resetFilters} onClose={() => setFilterOpen(false)} resultCount={filteredIssues.length} />}
       {selected && <IntelligenceDrawer selected={selected} visibleIssues={filteredIssues} onClose={() => setSelected(null)} />}
     </main>
   );
@@ -272,6 +275,7 @@ export function LiveMapWorkspace() {
 
 function MapFilters(props: {
   category: string; severity: string; status: string; division: string; district: string; department: string;
+  divisions: string[]; districts: string[]; departments: string[];
   setCategory: (value: string) => void; setSeverity: (value: string) => void; setStatus: (value: string) => void; setDivision: (value: string) => void; setDistrict: (value: string) => void; setDepartment: (value: string) => void;
   onReset: () => void; onClose: () => void; resultCount: number;
 }) {
@@ -285,11 +289,11 @@ function MapFilters(props: {
           <MapSelect label="Status" value={props.status} options={issueStatuses} onChange={props.setStatus} />
         </FilterGroup>
         <FilterGroup label="Geography">
-          <MapSelect label="Division" value={props.division} options={divisions} onChange={props.setDivision} />
-          <MapSelect label="District" value={props.district} options={districts} onChange={props.setDistrict} />
+          <MapSelect label="Division" value={props.division} options={props.divisions} onChange={props.setDivision} />
+          <MapSelect label="District" value={props.district} options={props.districts} onChange={props.setDistrict} />
         </FilterGroup>
         <FilterGroup label="Ownership">
-          <MapSelect label="Department" value={props.department} options={departments} onChange={props.setDepartment} />
+          <MapSelect label="Department" value={props.department} options={props.departments} onChange={props.setDepartment} />
         </FilterGroup>
       </div>
       <div className="absolute inset-x-0 bottom-0 border-t border-white/8 bg-slate-950 p-3"><Button variant="ghost" size="sm" className="w-full text-slate-400 hover:bg-white/5 hover:text-white" onClick={props.onReset}><RotateCcw /> Reset all filters</Button></div>

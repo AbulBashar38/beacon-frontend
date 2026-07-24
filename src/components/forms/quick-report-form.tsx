@@ -21,7 +21,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field } from "@/components/forms/field";
+import { FormAlert } from "@/components/forms/form-alert";
 import { issueCategories, toneClasses } from "@/lib/landing-data";
+import { getApiErrorMessage } from "@/lib/api/client";
+import { reportApi, type ApiReportCategory } from "@/lib/api/report-api";
 
 const severities = [
   { value: "low", label: "Low", color: "var(--map-heat-low)" },
@@ -52,12 +55,14 @@ type FormValues = z.infer<typeof schema>;
 
 const MAX_IMAGE_MB = 8;
 
-function makeTrackingCode() {
-  const block = () =>
-    Math.random().toString(36).slice(2, 6).toUpperCase().padEnd(4, "0");
-  const digits = Math.floor(1000 + Math.random() * 9000);
-  return `BEA-${block()}-${digits}`;
-}
+const apiCategory: Record<string, ApiReportCategory> = {
+  pothole: "pothole",
+  streetlight: "broken_streetlight",
+  "water-leak": "water_leak",
+  dumping: "illegal_dumping",
+  drainage: "other",
+  "road-hazard": "other",
+};
 
 export function QuickReportForm() {
   const {
@@ -77,6 +82,8 @@ export function QuickReportForm() {
   );
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
+  const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<{
     code: string;
     title: string;
@@ -117,6 +124,7 @@ export function QuickReportForm() {
           `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`,
           { shouldValidate: true, shouldTouch: true },
         );
+        setCoordinates({ latitude, longitude });
         setLocating(false);
       },
       () => setLocating(false),
@@ -132,9 +140,22 @@ export function QuickReportForm() {
   }
 
   const onSubmit = handleSubmit(async (values) => {
-    // No backend yet — simulate the submission round-trip.
-    await new Promise((r) => setTimeout(r, 900));
-    setSubmitted({ code: makeTrackingCode(), title: values.title });
+    setSubmitError(null);
+    try {
+      const report = await reportApi.create({
+        description: `${values.title}\n\n${values.description}\n\nCitizen urgency: ${values.severity}`,
+        locationText: values.location,
+        contact: values.contact || undefined,
+        category: apiCategory[values.category] ?? "other",
+        language: "en",
+        latitude: coordinates?.latitude,
+        longitude: coordinates?.longitude,
+        imageUrls: [],
+      });
+      setSubmitted({ code: report.trackingCode, title: values.title });
+    } catch (error) {
+      setSubmitError(getApiErrorMessage(error, "We couldn't submit this report. Please try again."));
+    }
   });
 
   return (
@@ -175,6 +196,8 @@ export function QuickReportForm() {
             noValidate
             className="flex flex-col gap-6 p-6 sm:p-8"
           >
+            {submitError ? <FormAlert variant="error">{submitError}</FormAlert> : null}
+
             {/* category */}
             <Field
               label="What's the problem?"

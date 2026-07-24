@@ -14,7 +14,8 @@ import {
 
 import { SeverityBadge, StatusBadge } from "@/components/shared/issue-badges";
 import { Button } from "@/components/ui/button";
-import { adminIssues, issueCategories, issueSeverities, issueStatuses } from "@/lib/admin-issues";
+import { useReports } from "@/hooks/use-reports";
+import { issueCategories, issueSeverities, issueStatuses, type AdminIssue } from "@/lib/admin-issues";
 import { cn } from "@/lib/utils";
 
 type ReportConfig = {
@@ -46,15 +47,16 @@ const defaultConfig: ReportConfig = {
 };
 
 const divisions = ["All divisions", "Barishal", "Chattogram", "Dhaka", "Khulna", "Mymensingh", "Rajshahi", "Rangpur", "Sylhet"];
-const districts = ["All districts", ...Array.from(new Set(adminIssues.map((issue) => issue.district))).sort()];
-const departments = ["All departments", ...Array.from(new Set(adminIssues.map((issue) => issue.department))).sort()];
 const mapTypes = ["Issue heatmap", "Severity view", "District summary", "Marker view"];
 
 export function ReportBuilder() {
+  const { reports, loading, error, reload } = useReports({ limit: 100, sortBy: "createdAt", sortOrder: "desc" });
   const [config, setConfig] = useState(defaultConfig);
   const [saved, setSaved] = useState(false);
+  const districts = useMemo(() => ["All districts", ...Array.from(new Set(reports.map((issue) => issue.district))).sort()], [reports]);
+  const departments = useMemo(() => ["All departments", ...Array.from(new Set(reports.map((issue) => issue.department))).sort()], [reports]);
 
-  const reportIssues = useMemo(() => adminIssues.filter((issue) => {
+  const reportIssues = useMemo(() => reports.filter((issue) => {
     const submitted = issue.submittedAt.slice(0, 10);
     return submitted >= config.startDate &&
       submitted <= config.endDate &&
@@ -64,7 +66,7 @@ export function ReportBuilder() {
       (config.severity === "All severities" || issue.severity === config.severity) &&
       (config.status === "All statuses" || issue.status === config.status) &&
       (config.department === "All departments" || issue.department === config.department);
-  }), [config]);
+  }), [config, reports]);
 
   function update<K extends keyof ReportConfig>(key: K, value: ReportConfig[K]) {
     setConfig((current) => ({ ...current, [key]: value }));
@@ -88,15 +90,19 @@ export function ReportBuilder() {
         </div>
 
         <div className="mt-6 grid items-start gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
-          <ReportFilters config={config} update={update} resultCount={reportIssues.length} />
+          <ReportFilters config={config} update={update} resultCount={reportIssues.length} districts={districts} departments={departments} />
+          <div>
+            {error && <div role="alert" className="mb-3 flex items-center gap-3 rounded-xl border border-red-300/15 bg-red-400/[0.06] px-4 py-3 text-xs text-red-300 print:hidden"><span className="flex-1">{error}</span><button onClick={() => void reload()} className="font-semibold text-white">Retry</button></div>}
+            {loading && <div className="mb-3 rounded-xl border border-white/8 bg-white/[0.035] px-4 py-2 text-[10px] text-teal-300 print:hidden">Syncing report data from the API…</div>}
           <ReportPreview config={config} issues={reportIssues} />
+          </div>
         </div>
       </div>
     </main>
   );
 }
 
-function ReportFilters({ config, update, resultCount }: { config: ReportConfig; update: <K extends keyof ReportConfig>(key: K, value: ReportConfig[K]) => void; resultCount: number }) {
+function ReportFilters({ config, update, resultCount, districts, departments }: { config: ReportConfig; update: <K extends keyof ReportConfig>(key: K, value: ReportConfig[K]) => void; resultCount: number; districts: string[]; departments: string[] }) {
   return (
     <aside className="overflow-hidden rounded-2xl border border-white/8 bg-slate-900/80 shadow-xl shadow-black/10 print:hidden xl:sticky xl:top-20">
       <header className="border-b border-white/7 px-5 py-4">
@@ -130,7 +136,7 @@ function ReportFilters({ config, update, resultCount }: { config: ReportConfig; 
   );
 }
 
-function ReportPreview({ config, issues }: { config: ReportConfig; issues: typeof adminIssues }) {
+function ReportPreview({ config, issues }: { config: ReportConfig; issues: AdminIssue[] }) {
   const resolved = issues.filter((issue) => issue.status === "Resolved").length;
   const critical = issues.filter((issue) => issue.severity === "Critical").length;
   const inProgress = issues.filter((issue) => issue.status === "In progress").length;
@@ -220,7 +226,7 @@ function ReportMetric({ label, value, tone = "default" }: { label: string; value
   return <div className="rounded-lg border border-slate-200 bg-white p-3"><p className="text-[8px] font-bold uppercase tracking-[0.12em] text-slate-400">{label}</p><p className={cn("mt-1 font-heading text-xl font-extrabold", tones[tone])}>{value}</p></div>;
 }
 
-function ReportMap({ issues }: { issues: typeof adminIssues }) {
+function ReportMap({ issues }: { issues: AdminIssue[] }) {
   const dots = issues.slice(0, 12);
   return (
     <div className="relative mt-3 h-64 overflow-hidden rounded-lg border border-slate-200 bg-[linear-gradient(rgba(15,118,110,.04)_1px,transparent_1px),linear-gradient(90deg,rgba(15,118,110,.04)_1px,transparent_1px)] bg-[size:24px_24px] sm:h-72">
@@ -241,7 +247,7 @@ function ReportMap({ issues }: { issues: typeof adminIssues }) {
   );
 }
 
-function ReportCharts({ issues }: { issues: typeof adminIssues }) {
+function ReportCharts({ issues }: { issues: AdminIssue[] }) {
   const categoryCounts = issueCategories.slice(1).map((category) => ({ label: category, value: issues.filter((issue) => issue.category === category).length }));
   const severityCounts = issueSeverities.slice(1).map((severity) => ({ label: severity, value: issues.filter((issue) => issue.severity === severity).length }));
   const max = Math.max(1, ...categoryCounts.map((item) => item.value), ...severityCounts.map((item) => item.value));
@@ -257,7 +263,7 @@ function ReportBarChart({ title, data, max, color }: { title: string; data: Arra
   return <div className="rounded-lg border border-slate-200 bg-white p-4"><h3 className="text-[10px] font-bold text-slate-700">{title}</h3><div className="mt-4 space-y-2.5">{data.map((item) => <div key={item.label} className="grid grid-cols-[74px_1fr_20px] items-center gap-2 text-[8px]"><span className="truncate text-slate-500">{item.label}</span><div className="h-2 rounded-full bg-slate-100"><div className={cn("h-full rounded-full", color)} style={{ width: `${(item.value / max) * 100}%` }} /></div><span className="font-mono font-bold text-slate-700">{item.value}</span></div>)}</div></div>;
 }
 
-function ReportTable({ issues }: { issues: typeof adminIssues }) {
+function ReportTable({ issues }: { issues: AdminIssue[] }) {
   return (
     <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
       <table className="w-full text-left">

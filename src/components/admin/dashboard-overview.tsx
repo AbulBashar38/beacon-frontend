@@ -1,12 +1,16 @@
+"use client";
+
 import Link from "next/link";
-import { ArrowRight, ChevronRight, Filter, Radio, ShieldAlert } from "lucide-react";
+import { ArrowRight, ChevronRight, Filter, Radio, RefreshCw, ShieldAlert } from "lucide-react";
 
 import { CategoryChart, ResolutionChart } from "@/components/admin/analytics-panels";
 import { DashboardPanel } from "@/components/admin/dashboard-panel";
 import { MetricCard } from "@/components/admin/metric-card";
 import { OverviewMap } from "@/components/admin/overview-map";
 import { Button } from "@/components/ui/button";
-import { criticalIssues, dashboardMetrics, districtRanking, recentActivity } from "@/lib/admin-data";
+import { dashboardMetrics, districtRanking, recentActivity } from "@/lib/admin-data";
+import { useReports } from "@/hooks/use-reports";
+import { useReportStats } from "@/hooks/use-report-stats";
 
 const activityTone: Record<string, string> = {
   primary: "bg-teal-400",
@@ -16,6 +20,24 @@ const activityTone: Record<string, string> = {
 };
 
 export function DashboardOverview() {
+  const { reports, error: reportsError, reload: reloadReports } = useReports({ limit: 100, sortBy: "createdAt", sortOrder: "desc" }, 30_000);
+  const { stats, error: statsError, reload: reloadStats } = useReportStats();
+  const criticalIssues = reports.filter((issue) => issue.severity === "Critical" && issue.status !== "Resolved" && issue.status !== "Rejected").slice(0, 3);
+  const metrics = dashboardMetrics.map((metric) => {
+    if (!stats) return { ...metric, value: "—" };
+    const values: Record<string, string> = {
+      "Total issues": stats.totalReports.toLocaleString(),
+      "New issues": stats.pendingReports.toLocaleString(),
+      "Critical": stats.criticalReports.toLocaleString(),
+      "In progress": stats.statusBreakdown.in_progress.toLocaleString(),
+      "Resolved": stats.resolvedReports.toLocaleString(),
+      "Duplicates": stats.duplicatesLinked.toLocaleString(),
+      "Avg. resolution": `${(stats.averageResolutionTimeHours / 24).toFixed(1)}d`,
+    };
+    return { ...metric, value: values[metric.label] ?? metric.value };
+  });
+  const apiError = reportsError ?? statsError;
+
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-[radial-gradient(circle_at_20%_0%,rgba(20,184,166,.07),transparent_32%)] px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1600px]">
@@ -33,23 +55,25 @@ export function DashboardOverview() {
           </div>
         </div>
 
+        {apiError && <div role="alert" className="mt-5 flex items-center gap-3 rounded-xl border border-red-300/15 bg-red-400/[0.06] px-4 py-3 text-xs text-red-300"><span className="flex-1">{apiError}</span><Button size="sm" variant="ghost" className="hover:bg-red-400/10" onClick={() => { void reloadReports(); void reloadStats(); }}><RefreshCw /> Retry</Button></div>}
+
         <section className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7" aria-label="Key metrics">
-          {dashboardMetrics.map((metric) => <MetricCard key={metric.label} metric={metric} />)}
+          {metrics.map((metric) => <MetricCard key={metric.label} metric={metric} />)}
         </section>
 
         <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,.7fr)]">
           <DashboardPanel title="Bangladesh issue intelligence" eyebrow="Live geospatial view" action={<Link href="/admin/map" className="flex items-center gap-1 text-[11px] font-medium text-teal-300 hover:text-teal-200">Open full map <ArrowRight className="size-3" /></Link>}>
-            <OverviewMap />
+            <OverviewMap issues={reports} />
           </DashboardPanel>
 
-          <DashboardPanel title="Critical issue queue" eyebrow="Needs immediate action" action={<span className="rounded-md bg-red-400/10 px-2 py-1 font-mono text-[10px] text-red-300">27 open</span>}>
+          <DashboardPanel title="Critical issue queue" eyebrow="Needs immediate action" action={<span className="rounded-md bg-red-400/10 px-2 py-1 font-mono text-[10px] text-red-300">{criticalIssues.length} shown</span>}>
             <div className="divide-y divide-white/7">
               {criticalIssues.map((issue) => (
                 <Link key={issue.id} href={`/admin/issues/${issue.id}`} className="group block p-4 transition hover:bg-white/[0.025]">
                   <div className="flex items-start gap-3">
                     <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-red-400/10 text-red-300"><ShieldAlert className="size-4" /></span>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2"><span className="font-mono text-[9px] uppercase tracking-wide text-slate-600">{issue.id}</span><span className="text-[10px] text-slate-600">{issue.age}</span></div>
+                      <div className="flex items-center justify-between gap-2"><span className="font-mono text-[9px] uppercase tracking-wide text-slate-600">{issue.trackingCode ?? issue.id.slice(0, 8)}</span><span className="text-[10px] text-slate-600">{issue.lastUpdated}</span></div>
                       <p className="mt-1 text-xs font-medium leading-relaxed text-slate-200 group-hover:text-white">{issue.title}</p>
                       <p className="mt-1 text-[10px] text-slate-500">{issue.location}</p>
                     </div>
@@ -57,6 +81,7 @@ export function DashboardOverview() {
                   </div>
                 </Link>
               ))}
+              {!criticalIssues.length && <div className="px-5 py-12 text-center"><p className="text-xs font-medium text-slate-300">No critical issues</p><p className="mt-1 text-[10px] text-slate-600">The live API has no open critical reports.</p></div>}
             </div>
             <div className="border-t border-white/7 p-3"><Button variant="ghost" className="w-full text-xs text-slate-400 hover:bg-white/5 hover:text-white" asChild><Link href="/admin/issues">View priority queue <ArrowRight /></Link></Button></div>
           </DashboardPanel>

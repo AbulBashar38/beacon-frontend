@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Map, { Layer, NavigationControl, Source, type LayerProps } from "react-map-gl/mapbox";
 import { AlertTriangle, Layers3, LoaderCircle, MapPin } from "lucide-react";
 
-import { bangladeshHeatmapData } from "@/lib/bangladesh-heatmap-data";
+import { createIssueMapData } from "@/lib/admin-map-data";
+import type { AdminIssue } from "@/lib/admin-issues";
 import { cn } from "@/lib/utils";
 
 const heatLayer: LayerProps = {
@@ -12,7 +13,7 @@ const heatLayer: LayerProps = {
   type: "heatmap",
   maxzoom: 11,
   paint: {
-    "heatmap-weight": ["interpolate", ["linear"], ["get", "issueCount"], 0, 0, 300, 1],
+    "heatmap-weight": ["interpolate", ["linear"], ["get", "severityScore"], 1, 0.25, 4, 1],
     "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 4, 0.85, 9, 2.4],
     "heatmap-color": [
       "interpolate", ["linear"], ["heatmap-density"],
@@ -32,7 +33,7 @@ const markerLayer: LayerProps = {
   id: "admin-issue-markers",
   type: "circle",
   paint: {
-    "circle-radius": ["interpolate", ["linear"], ["get", "issueCount"], 40, 5, 300, 14],
+    "circle-radius": ["interpolate", ["linear"], ["get", "severityScore"], 1, 5, 4, 14],
     "circle-color": ["interpolate", ["linear"], ["get", "severity"], 0.4, "#22d3ee", 0.7, "#f59e0b", 1, "#ef4444"],
     "circle-opacity": 0.82,
     "circle-stroke-color": "#f8fafc",
@@ -40,12 +41,13 @@ const markerLayer: LayerProps = {
   },
 };
 
-export function OverviewMap() {
+export function OverviewMap({ issues }: { issues: AdminIssue[] }) {
   const [mode, setMode] = useState<"heat" | "markers">("heat");
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
   const style = process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? "mapbox://styles/mapbox/dark-v11";
+  const mapData = useMemo(() => createIssueMapData(issues), [issues]);
 
   if (!token || failed) {
     return (
@@ -85,7 +87,7 @@ export function OverviewMap() {
         style={{ width: "100%", height: 420 }}
       >
         <NavigationControl position="top-right" showCompass={false} />
-        <Source id="dashboard-issues" type="geojson" data={bangladeshHeatmapData}>
+        <Source id="dashboard-issues" type="geojson" data={mapData}>
           <Layer {...(mode === "heat" ? heatLayer : markerLayer)} />
         </Source>
       </Map>

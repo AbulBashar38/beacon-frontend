@@ -17,6 +17,8 @@ import { AuthHeader } from "@/components/auth/auth-header";
 import { PasswordInput } from "@/components/auth/password-input";
 import { SocialButtons } from "@/components/auth/social-buttons";
 import { AuthDivider } from "@/components/auth/auth-divider";
+import { authApi } from "@/lib/api/report-api";
+import { getApiErrorMessage } from "@/lib/api/client";
 
 const schema = z.object({
   email: z.string().min(1, "Enter your email").email("Enter a valid email"),
@@ -43,10 +45,14 @@ export function LoginForm() {
 
   const onSubmit = handleSubmit(async (values) => {
     setServerError(null);
-    await new Promise((r) => setTimeout(r, 900));
-    // Demo behaviour: any address beginning "error" simulates a failure.
-    if (values.email.startsWith("error")) {
-      setServerError("We couldn't sign you in. Check your details and retry.");
+    try {
+      const { accessToken } = await authApi.login({
+        email: values.email,
+        password: values.password,
+      });
+      window.localStorage.setItem("beacon_access_token", accessToken);
+    } catch (error) {
+      setServerError(getApiErrorMessage(error, "We couldn't sign you in. Check your details and retry."));
       return;
     }
     setDone(true);

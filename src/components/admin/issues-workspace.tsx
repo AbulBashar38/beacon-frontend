@@ -13,24 +13,26 @@ import {
   Search,
   SlidersHorizontal,
   X,
+  RefreshCw,
 } from "lucide-react";
 
 import { SeverityBadge, StatusBadge } from "@/components/shared/issue-badges";
 import { Button } from "@/components/ui/button";
 import {
-  adminIssues,
   issueCategories,
   issueSeverities,
   issueStatuses,
   type AdminIssue,
 } from "@/lib/admin-issues";
 import { cn } from "@/lib/utils";
+import { useReports } from "@/hooks/use-reports";
 
 type SortKey = "submittedAt" | "severity" | "status";
 const severityOrder = { Critical: 4, High: 3, Medium: 2, Low: 1 };
 const PAGE_SIZE = 7;
 
 export function IssuesWorkspace() {
+  const { reports, loading, error, reload } = useReports({ limit: 100, sortBy: "createdAt", sortOrder: "desc" });
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All statuses");
   const [severity, setSeverity] = useState("All severities");
@@ -42,7 +44,7 @@ export function IssuesWorkspace() {
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return adminIssues
+    return reports
       .filter((issue) => !query || [issue.id, issue.title, issue.location, issue.district, issue.department].some((value) => value.toLowerCase().includes(query)))
       .filter((issue) => status === "All statuses" || issue.status === status)
       .filter((issue) => severity === "All severities" || issue.severity === severity)
@@ -54,7 +56,7 @@ export function IssuesWorkspace() {
         if (sortKey === "status") result = a.status.localeCompare(b.status);
         return sortDesc ? -result : result;
       });
-  }, [category, search, severity, sortDesc, sortKey, status]);
+  }, [category, reports, search, severity, sortDesc, sortKey, status]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
@@ -87,6 +89,8 @@ export function IssuesWorkspace() {
         </div>
 
         <section className="mt-6 overflow-hidden rounded-2xl border border-white/8 bg-slate-900/75 shadow-2xl shadow-black/10">
+          {error && <div role="alert" className="flex items-center gap-3 border-b border-red-300/10 bg-red-400/[0.06] px-4 py-3 text-xs text-red-300"><span className="flex-1">{error}</span><Button size="sm" variant="ghost" className="hover:bg-red-400/10" onClick={() => void reload()}><RefreshCw /> Retry</Button></div>}
+          {loading && <div className="h-0.5 overflow-hidden bg-white/5"><div className="h-full w-1/3 animate-pulse rounded-full bg-teal-400" /></div>}
           <div className="border-b border-white/7 p-4">
             <div className="flex flex-col gap-3 xl:flex-row">
               <label className="relative min-w-0 flex-1">
@@ -147,7 +151,7 @@ export function IssuesWorkspace() {
             {visible.map((issue) => <IssueMobileCard key={issue.id} issue={issue} selected={selected.includes(issue.id)} onSelect={() => setSelected((items) => items.includes(issue.id) ? items.filter((id) => id !== issue.id) : [...items, issue.id])} />)}
           </div>
 
-          {!visible.length && <div className="px-6 py-20 text-center"><Search className="mx-auto size-7 text-slate-700" /><h2 className="mt-3 text-sm font-semibold text-slate-300">No issues found</h2><p className="mt-1 text-xs text-slate-600">Try adjusting your search or clearing the active filters.</p><Button variant="outline" size="sm" className="mt-4 border-white/10 bg-white/[0.035] text-slate-300" onClick={clearFilters}>Clear filters</Button></div>}
+          {!loading && !visible.length && <div className="px-6 py-20 text-center"><Search className="mx-auto size-7 text-slate-700" /><h2 className="mt-3 text-sm font-semibold text-slate-300">No issues found</h2><p className="mt-1 text-xs text-slate-600">{error ? "Reconnect to the API and try again." : "Try adjusting your search or clearing the active filters."}</p><Button variant="outline" size="sm" className="mt-4 border-white/10 bg-white/[0.035] text-slate-300" onClick={error ? () => void reload() : clearFilters}>{error ? "Retry connection" : "Clear filters"}</Button></div>}
 
           <footer className="flex flex-col gap-3 border-t border-white/7 px-4 py-3 text-[11px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
             <p>Showing {visible.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length} issues</p>

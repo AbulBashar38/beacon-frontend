@@ -6,6 +6,7 @@ const statusStyles: Record<IssueStatus, string> = {
   Acknowledged: "border-violet-300/15 bg-violet-400/10 text-violet-300",
   "In progress": "border-amber-300/15 bg-amber-400/10 text-amber-300",
   Resolved: "border-emerald-300/15 bg-emerald-400/10 text-emerald-300",
+  Rejected: "border-slate-300/10 bg-slate-400/10 text-slate-400",
 };
 
 const severityStyles: Record<IssueSeverity, string> = {

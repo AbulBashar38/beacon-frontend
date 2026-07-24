@@ -1,0 +1,146 @@
+import { apiClient } from "@/lib/api/client";
+
+export type ApiReportCategory = "pothole" | "broken_streetlight" | "water_leak" | "illegal_dumping" | "other";
+export type ApiSeverity = "low" | "medium" | "high" | "critical";
+export type ApiReportStatus = "pending" | "under_review" | "assigned" | "in_progress" | "resolved" | "rejected";
+export type ApiDepartment = "roads_and_highways" | "electrical" | "water_and_sewerage" | "waste_management" | "general";
+
+export type ApiReport = {
+  id: string;
+  trackingCode: string;
+  citizenName: string | null;
+  contact: string | null;
+  description: string;
+  locationText: string;
+  latitude: number | null;
+  longitude: number | null;
+  category: ApiReportCategory;
+  aiCategory: ApiReportCategory | null;
+  severityLevel: ApiSeverity | null;
+  severityScore: number | null;
+  summary: string | null;
+  canonicalSummary: string | null;
+  language: "bn" | "en" | "unknown";
+  imageUrls: string[];
+  status: ApiReportStatus;
+  assignedDepartment: ApiDepartment | null;
+  duplicateOfId: string | null;
+  duplicateScore: number | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ApiMeta = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+export type ReportStats = {
+  totalReports: number;
+  pendingReports: number;
+  criticalReports: number;
+  resolvedReports: number;
+  categoryBreakdown: Record<string, number>;
+  severityBreakdown: Record<string, number>;
+  departmentBreakdown: Record<string, number>;
+  statusBreakdown: Record<ApiReportStatus, number>;
+  averageResolutionTimeHours: number;
+  last7Days: Array<{ date: string; count: number }>;
+  duplicatesLinked: number;
+};
+
+export type TrackedReport = {
+  trackingCode: string;
+  category: ApiReportCategory;
+  summary: string;
+  severity: {
+    level: ApiSeverity | null;
+    score: number | null;
+    rationale: string | null;
+  };
+  status: ApiReportStatus;
+  department: ApiDepartment | null;
+  language: "bn" | "en" | "unknown";
+  images: string[];
+  createdAt: string;
+  progress: Array<{
+    id: string;
+    status: ApiReportStatus;
+    note: string | null;
+    visibility: "public" | "internal";
+    createdAt: string;
+  }>;
+};
+
+type ApiResponse<T> = {
+  success: boolean;
+  statusCode: number;
+  message: string;
+  data: T;
+  meta?: ApiMeta;
+};
+
+export type CreateReportInput = {
+  citizenName?: string;
+  contact?: string;
+  description: string;
+  locationText: string;
+  latitude?: number;
+  longitude?: number;
+  imageUrls?: string[];
+  language?: "bn" | "en" | "unknown";
+  category?: ApiReportCategory;
+};
+
+export type ReportQuery = {
+  category?: ApiReportCategory;
+  severityLevel?: ApiSeverity;
+  status?: ApiReportStatus;
+  assignedDepartment?: ApiDepartment;
+  search?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: "createdAt" | "severityScore" | "status";
+  sortOrder?: "asc" | "desc";
+};
+
+export const authApi = {
+  async login(input: { email: string; password: string }) {
+    const response = await apiClient.post<ApiResponse<{ accessToken: string }>>("auth/login", input);
+    return response.data.data;
+  },
+};
+
+export const reportApi = {
+  async create(input: CreateReportInput) {
+    const response = await apiClient.post<ApiResponse<ApiReport>>("reports", input);
+    return response.data.data;
+  },
+
+  async list(query: ReportQuery = {}) {
+    const response = await apiClient.get<ApiResponse<ApiReport[]>>("reports", { params: query });
+    return {
+      reports: response.data.data,
+      meta: response.data.meta ?? { page: 1, limit: query.limit ?? 10, total: response.data.data.length, totalPages: 1 },
+    };
+  },
+
+  async getById(id: string) {
+    const response = await apiClient.get<ApiResponse<ApiReport>>(`reports/${id}`);
+    return response.data.data;
+  },
+
+  async track(trackingCode: string) {
+    const response = await apiClient.get<ApiResponse<TrackedReport>>(`reports/track/${encodeURIComponent(trackingCode)}`);
+    return response.data.data;
+  },
+
+  async stats(query: { location?: string; startDate?: string; endDate?: string; dateField?: "createdAt" | "updatedAt" } = {}) {
+    const response = await apiClient.get<ApiResponse<ReportStats>>("reports/stats/summary", { params: query });
+    return response.data.data;
+  },
+};
