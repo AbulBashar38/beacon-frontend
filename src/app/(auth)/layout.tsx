@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, ShieldCheck, MapPinned, Clock } from "lucide-react";
 
 import { BeaconWordmark } from "@/components/shared/beacon-mark";
+import { GuestOnly } from "@/components/auth/guest-only";
 
 const points = [
   { icon: ShieldCheck, text: "AI-triaged reports routed to the right team" },
@@ -15,7 +16,7 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-1">
+    <GuestOnly><div className="flex flex-1">
       {/* Brand panel */}
       <aside className="relative hidden w-[46%] max-w-2xl flex-col justify-between overflow-hidden bg-console p-10 text-console-foreground lg:flex xl:p-12">
         <div
@@ -94,7 +95,7 @@ export default function AuthLayout({
           Beacon · AI &amp; API Hackathon 2026
         </footer>
       </main>
-    </div>
+    </div></GuestOnly>
   );
 }
 

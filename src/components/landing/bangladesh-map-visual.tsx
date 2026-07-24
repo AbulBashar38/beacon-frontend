@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Map, {
   Layer,
   NavigationControl,
@@ -9,7 +9,8 @@ import Map, {
 } from "react-map-gl/mapbox";
 import { AlertTriangle, LoaderCircle } from "lucide-react";
 
-import { bangladeshHeatmapData } from "@/lib/bangladesh-heatmap-data";
+import { reportApi, type PublicMapReport } from "@/lib/api/report-api";
+import { getApiErrorMessage } from "@/lib/api/client";
 
 const heatmapLayer: LayerProps = {
   id: "civic-issue-heat",
@@ -19,10 +20,10 @@ const heatmapLayer: LayerProps = {
     "heatmap-weight": [
       "interpolate",
       ["linear"],
-      ["get", "issueCount"],
+      ["get", "severityScore"],
       0,
-      0,
-      300,
+      0.2,
+      1,
       1,
     ],
     "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 4, 0.8, 9, 2.2],
@@ -53,7 +54,7 @@ const hotspotLayer: LayerProps = {
   type: "circle",
   minzoom: 6.5,
   paint: {
-    "circle-radius": ["interpolate", ["linear"], ["get", "issueCount"], 40, 3, 300, 8],
+    "circle-radius": ["interpolate", ["linear"], ["get", "severityScore"], 0, 3, 1, 8],
     "circle-color": "#f8fafc",
     "circle-stroke-color": "#0f172a",
     "circle-stroke-width": 1.5,
@@ -64,9 +65,50 @@ const hotspotLayer: LayerProps = {
 export function BangladeshMapVisual() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasMapError, setHasMapError] = useState(false);
+  const [reports, setReports] = useState<PublicMapReport[]>([]);
+  const [dataError, setDataError] = useState<string | null>(null);
   const accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
   const mapStyle =
     process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? "mapbox://styles/mapbox/dark-v11";
+  const mapData = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: reports.map((report) => ({
+      type: "Feature" as const,
+      geometry: {
+        type: "Point" as const,
+        coordinates: [report.longitude, report.latitude],
+      },
+      properties: {
+        trackingCode: report.trackingCode,
+        category: report.category,
+        severity: report.severityLevel,
+        severityScore: report.severityScore ?? 0.2,
+        status: report.status,
+      },
+    })),
+  }), [reports]);
+
+  useEffect(() => {
+    let active = true;
+    const load = () => {
+      void reportApi.publicMap()
+        .then((data) => {
+          if (active) {
+            setReports(data);
+            setDataError(null);
+          }
+        })
+        .catch((reason) => {
+          if (active) setDataError(getApiErrorMessage(reason, "Live report data is unavailable."));
+        });
+    };
+    load();
+    const interval = window.setInterval(load, 30_000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, []);
 
   if (!accessToken) {
     return (
@@ -99,6 +141,9 @@ export function BangladeshMapVisual() {
           </div>
         </div>
       )}
+      <div className="absolute bottom-3 left-3 z-10 rounded-full border border-white/10 bg-slate-950/90 px-3 py-1.5 font-mono text-[10px] text-teal-300 backdrop-blur">
+        {dataError ? "Live data unavailable" : `${reports.length} live mapped reports`}
+      </div>
 
       <Map
         mapboxAccessToken={accessToken}
@@ -121,7 +166,7 @@ export function BangladeshMapVisual() {
         style={{ width: "100%", height: "100%" }}
       >
         <NavigationControl position="top-right" showCompass={false} />
-        <Source id="bangladesh-civic-issues" type="geojson" data={bangladeshHeatmapData}>
+        <Source id="bangladesh-civic-issues" type="geojson" data={mapData}>
           <Layer {...heatmapLayer} />
           <Layer {...hotspotLayer} />
         </Source>

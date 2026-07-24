@@ -1,48 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
-import { authApi } from "@/lib/api/report-api";
-import { clearAuthSession, getAccessToken } from "@/lib/auth-session";
+import { useAuth } from "@/contexts/auth-context";
 
 export function AdminAuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [allowed, setAllowed] = useState(false);
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (!getAccessToken()) {
-      router.replace("/login");
-      return;
-    }
+    if (loading) return;
+    if (!user) router.replace("/login");
+    else if (user.role !== "admin") router.replace("/dashboard");
+  }, [loading, router, user]);
 
-    void authApi
-      .me()
-      .then((user) => {
-        if (user.role !== "admin") {
-          clearAuthSession();
-          router.replace("/login");
-          return;
-        }
-        setAllowed(true);
-      })
-      .catch(() => {
-        clearAuthSession();
-        router.replace("/login");
-      });
-  }, [router]);
-
-  if (!allowed) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-background">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
-          <Loader2 className="size-4 animate-spin" />
-          Verifying secure session…
-        </div>
-      </main>
-    );
-  }
-
+  if (loading || user?.role !== "admin") return <AuthLoading label="Verifying secure session…" />;
   return children;
+}
+
+function AuthLoading({ label }: { label: string }) {
+  return <main className="flex min-h-screen items-center justify-center bg-background"><div className="flex items-center gap-2 text-sm text-muted-foreground" role="status"><Loader2 className="size-4 animate-spin" />{label}</div></main>;
 }

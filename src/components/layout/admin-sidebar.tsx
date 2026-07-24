@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ChevronLeft,
-  FileBarChart,
   LayoutDashboard,
   Map,
   ShieldCheck,
@@ -19,7 +18,6 @@ const routes = [
   { label: "Overview", href: "/admin/dashboard", icon: LayoutDashboard },
   { label: "Live map", href: "/admin/map", icon: Map },
   { label: "Issues", href: "/admin/issues", icon: ShieldCheck, badge: "27" },
-  { label: "Reports", href: "/admin/reports", icon: FileBarChart },
   { label: "Users", href: "/admin/users", icon: Users },
 ];
 

@@ -17,9 +17,8 @@ import { AuthHeader } from "@/components/auth/auth-header";
 import { PasswordInput } from "@/components/auth/password-input";
 import { SocialButtons } from "@/components/auth/social-buttons";
 import { AuthDivider } from "@/components/auth/auth-divider";
-import { authApi } from "@/lib/api/report-api";
 import { getApiErrorMessage } from "@/lib/api/client";
-import { saveAuthSession } from "@/lib/auth-session";
+import { useAuth } from "@/contexts/auth-context";
 
 const schema = z.object({
   email: z.string().min(1, "Enter your email").email("Enter a valid email"),
@@ -31,6 +30,7 @@ type FormValues = z.infer<typeof schema>;
 
 export function LoginForm() {
   const router = useRouter();
+  const { login } = useAuth();
   const {
     register,
     handleSubmit,
@@ -48,12 +48,8 @@ export function LoginForm() {
   const onSubmit = handleSubmit(async (values) => {
     setServerError(null);
     try {
-      const { accessToken, user } = await authApi.login({
-        email: values.email,
-        password: values.password,
-      });
+      const user = await login(values.email, values.password, values.remember ?? true);
       const target = user.role === "admin" ? "/admin/dashboard" : "/dashboard";
-      saveAuthSession(accessToken, user, values.remember ?? true);
       setDestination(target);
       setDone(true);
       await new Promise((resolve) => setTimeout(resolve, 450));

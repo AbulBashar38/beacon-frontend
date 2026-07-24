@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDown,
@@ -26,14 +26,17 @@ import {
 } from "@/lib/admin-issues";
 import { cn } from "@/lib/utils";
 import { useReports } from "@/hooks/use-reports";
+import type { ApiReportCategory, ApiReportStatus, ApiSeverity, ReportQuery } from "@/lib/api/report-api";
 
 type SortKey = "submittedAt" | "severity" | "status";
-const severityOrder = { Critical: 4, High: 3, Medium: 2, Low: 1 };
-const PAGE_SIZE = 7;
+const PAGE_SIZE = 10;
+const statusQuery: Record<string, ApiReportStatus> = { New: "pending", "Under review": "under_review", Assigned: "assigned", "In progress": "in_progress", Resolved: "resolved", Rejected: "rejected" };
+const severityQuery: Record<string, ApiSeverity> = { Critical: "critical", High: "high", Medium: "medium", Low: "low" };
+const categoryQuery: Record<string, ApiReportCategory> = { "Road damage": "pothole", Streetlight: "broken_streetlight", Waste: "illegal_dumping", "Water leak": "water_leak", Drainage: "other", Other: "other" };
 
 export function IssuesWorkspace() {
-  const { reports, loading, error, reload } = useReports({ limit: 100, sortBy: "createdAt", sortOrder: "desc" });
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [status, setStatus] = useState("All statuses");
   const [severity, setSeverity] = useState("All severities");
   const [category, setCategory] = useState("All categories");
@@ -42,25 +45,20 @@ export function IssuesWorkspace() {
   const [selected, setSelected] = useState<string[]>([]);
   const [page, setPage] = useState(1);
 
-  const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return reports
-      .filter((issue) => !query || [issue.id, issue.title, issue.location, issue.district, issue.department].some((value) => value.toLowerCase().includes(query)))
-      .filter((issue) => status === "All statuses" || issue.status === status)
-      .filter((issue) => severity === "All severities" || issue.severity === severity)
-      .filter((issue) => category === "All categories" || issue.category === category)
-      .sort((a, b) => {
-        let result = 0;
-        if (sortKey === "submittedAt") result = new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
-        if (sortKey === "severity") result = severityOrder[a.severity] - severityOrder[b.severity];
-        if (sortKey === "status") result = a.status.localeCompare(b.status);
-        return sortDesc ? -result : result;
-      });
-  }, [category, reports, search, severity, sortDesc, sortKey, status]);
-
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, pageCount);
-  const visible = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const query = useMemo<ReportQuery>(() => ({
+    page,
+    limit: PAGE_SIZE,
+    search: deferredSearch.trim() || undefined,
+    status: statusQuery[status],
+    severityLevel: severityQuery[severity],
+    category: categoryQuery[category],
+    sortBy: sortKey === "submittedAt" ? "createdAt" : sortKey === "severity" ? "severityScore" : "status",
+    sortOrder: sortDesc ? "desc" : "asc",
+  }), [category, deferredSearch, page, severity, sortDesc, sortKey, status]);
+  const { reports, meta, loading, error, reload } = useReports(query);
+  const pageCount = meta.totalPages;
+  const currentPage = meta.page;
+  const visible = reports;
   const activeFilters = [status !== "All statuses" ? status : null, severity !== "All severities" ? severity : null, category !== "All categories" ? category : null].filter(Boolean);
   const allVisibleSelected = visible.length > 0 && visible.every((issue) => selected.includes(issue.id));
 
@@ -177,7 +175,7 @@ export function IssuesWorkspace() {
           {!loading && !visible.length && <div className="px-6 py-20 text-center"><Search className="mx-auto size-7 text-slate-700" /><h2 className="mt-3 text-sm font-semibold text-slate-300">No issues found</h2><p className="mt-1 text-xs text-slate-600">{error ? "Reconnect to the API and try again." : "Try adjusting your search or clearing the active filters."}</p><Button variant="outline" size="sm" className="mt-4 border-white/10 bg-white/[0.035] text-slate-300" onClick={error ? () => void reload() : clearFilters}>{error ? "Retry connection" : "Clear filters"}</Button></div>}
 
           <footer className="flex flex-col gap-3 border-t border-white/7 px-4 py-3 text-[11px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-            <p>Showing {visible.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length} issues</p>
+            <p>Showing {visible.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0}–{Math.min(currentPage * PAGE_SIZE, meta.total)} of {meta.total} issues</p>
             <div className="flex items-center gap-2">
               <button disabled={currentPage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))} className="grid size-8 place-items-center rounded-lg border border-white/8 text-slate-400 disabled:opacity-30 hover:not-disabled:bg-white/5" aria-label="Previous page"><ChevronLeft className="size-4" /></button>
               <span className="px-2 font-mono text-[10px] text-slate-400">Page {currentPage} / {pageCount}</span>

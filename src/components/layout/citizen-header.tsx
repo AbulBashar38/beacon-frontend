@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
 import { Menu, X } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { BeaconWordmark } from "@/components/shared/beacon-mark";
+import { Button } from "@/components/ui/button";
 import { navLinks } from "@/lib/landing-data";
+import { cn } from "@/lib/utils";
 
 export function CitizenHeader() {
   const [scrolled, setScrolled] = useState(false);
@@ -51,7 +51,7 @@ export function CitizenHeader() {
             <Link href="/login">Sign in</Link>
           </Button>
           <Button asChild size="lg">
-            <Link href="/report">Report an issue</Link>
+            <Link href="#report">Report an issue</Link>
           </Button>
         </div>
 

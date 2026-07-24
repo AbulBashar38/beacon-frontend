@@ -18,9 +18,8 @@ import { PasswordInput } from "@/components/auth/password-input";
 import { PasswordStrength } from "@/components/auth/password-strength";
 import { SocialButtons } from "@/components/auth/social-buttons";
 import { AuthDivider } from "@/components/auth/auth-divider";
-import { authApi } from "@/lib/api/report-api";
 import { getApiErrorMessage } from "@/lib/api/client";
-import { saveAuthSession } from "@/lib/auth-session";
+import { useAuth } from "@/contexts/auth-context";
 
 const schema = z
   .object({
@@ -45,6 +44,7 @@ type FormValues = z.infer<typeof schema>;
 
 export function RegisterForm() {
   const router = useRouter();
+  const { register: registerAccount } = useAuth();
   const {
     register,
     handleSubmit,
@@ -63,16 +63,7 @@ export function RegisterForm() {
   const onSubmit = handleSubmit(async (values) => {
     setServerError(null);
     try {
-      await authApi.register({
-        name: values.name,
-        email: values.email,
-        password: values.password,
-      });
-      const { accessToken, user } = await authApi.login({
-        email: values.email,
-        password: values.password,
-      });
-      saveAuthSession(accessToken, user, true);
+      await registerAccount(values.name, values.email, values.password);
     } catch (error) {
       setServerError(getApiErrorMessage(error, "We couldn't create your account. Please try again."));
       return;

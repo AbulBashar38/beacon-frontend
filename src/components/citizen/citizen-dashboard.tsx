@@ -6,9 +6,8 @@ import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, Clock3, FileText, Loa
 
 import { Button } from "@/components/ui/button";
 import { reportApi, type ApiReport } from "@/lib/api/report-api";
-import { authApi } from "@/lib/api/report-api";
-import { clearAuthSession, getAuthUser } from "@/lib/auth-session";
 import { getApiErrorMessage } from "@/lib/api/client";
+import { useAuth } from "@/contexts/auth-context";
 
 function formatLabel(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -18,7 +17,7 @@ export function CitizenDashboard() {
   const [reports, setReports] = useState<ApiReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const user = getAuthUser();
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     void reportApi.mine()
@@ -33,13 +32,9 @@ export function CitizenDashboard() {
     resolved: reports.filter((report) => report.status === "resolved").length,
   }), [reports]);
 
-  async function logout() {
-    try {
-      await authApi.logout();
-    } finally {
-      clearAuthSession();
-      window.location.assign("/login");
-    }
+  async function handleLogout() {
+    await logout();
+    window.location.assign("/login");
   }
 
   return (
@@ -56,7 +51,7 @@ export function CitizenDashboard() {
               <Link href="/"><ArrowLeft />Back to home</Link>
             </Button>
             <Button asChild variant="hero"><Link href="/#report"><Plus />Report an issue</Link></Button>
-            <Button variant="outline" onClick={logout}><LogOut />Sign out</Button>
+            <Button variant="outline" onClick={() => void handleLogout()}><LogOut />Sign out</Button>
           </div>
         </header>
 

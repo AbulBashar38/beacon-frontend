@@ -7,12 +7,14 @@ export type AuthUser = {
 
 const TOKEN_KEY = "beacon_access_token";
 const USER_KEY = "beacon_auth_user";
+export const AUTH_SESSION_EVENT = "beacon-auth-session";
 
 export function saveAuthSession(accessToken: string, user: AuthUser, remember: boolean) {
   clearAuthSession();
   const storage = remember ? window.localStorage : window.sessionStorage;
   storage.setItem(TOKEN_KEY, accessToken);
   storage.setItem(USER_KEY, JSON.stringify(user));
+  window.dispatchEvent(new Event(AUTH_SESSION_EVENT));
 }
 
 export function getAccessToken() {
@@ -39,4 +41,5 @@ export function clearAuthSession() {
   window.localStorage.removeItem(USER_KEY);
   window.sessionStorage.removeItem(TOKEN_KEY);
   window.sessionStorage.removeItem(USER_KEY);
+  window.dispatchEvent(new Event(AUTH_SESSION_EVENT));
 }

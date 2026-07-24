@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
-import { ArrowRight, Search, Activity, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/shared/section";
@@ -134,22 +134,6 @@ function ConsolePanel() {
         <div className="relative rounded-xl bg-[color-mix(in_oklch,var(--console),black_18%)] p-2">
           <div className="bg-grid text-console-foreground/50 absolute inset-2 rounded-lg [mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,black,transparent)]" />
           <BangladeshMapVisual />
-
-          {/* floating status cards */}
-          <FloatingCard
-            className="left-3 top-6"
-            delay={0}
-            icon={<Activity className="size-3.5 text-warning" />}
-            title="New report"
-            value="Waterlogging · Mirpur"
-          />
-          <FloatingCard
-            className="right-3 bottom-16"
-            delay={1.1}
-            icon={<CheckCircle2 className="size-3.5 text-success" />}
-            title="Resolved"
-            value="Streetlight · Agrabad"
-          />
         </div>
 
         {/* legend */}
@@ -165,44 +149,6 @@ function ConsolePanel() {
         </div>
       </div>
     </div>
-  );
-}
-
-function FloatingCard({
-  className,
-  icon,
-  title,
-  value,
-  delay,
-}: {
-  className?: string;
-  icon: React.ReactNode;
-  title: string;
-  value: string;
-  delay: number;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: [0, -6, 0] }}
-      transition={{
-        opacity: { delay: 0.9 + delay, duration: 0.4 },
-        y: { delay: 1 + delay, duration: 4, repeat: Infinity, ease: "easeInOut" },
-      }}
-      className={`absolute flex items-center gap-2.5 rounded-xl border border-console-border/70 bg-console-elevated/95 px-3 py-2 shadow-lg backdrop-blur ${className}`}
-    >
-      <span className="flex size-7 items-center justify-center rounded-lg bg-[color-mix(in_oklch,var(--console),white_8%)]">
-        {icon}
-      </span>
-      <span className="flex flex-col">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-console-muted">
-          {title}
-        </span>
-        <span className="text-xs font-medium text-console-foreground">
-          {value}
-        </span>
-      </span>
-    </motion.div>
   );
 }
 

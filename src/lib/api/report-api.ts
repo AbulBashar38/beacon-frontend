@@ -61,7 +61,7 @@ export type ReportStats = {
   departmentBreakdown: Record<string, number>;
   statusBreakdown: Record<ApiReportStatus, number>;
   averageResolutionTimeHours: number;
-  last7Days: Array<{ date: string; count: number }>;
+  last7Days: Array<{ date: string; count: number; resolved: number }>;
   duplicatesLinked: number;
 };
 
@@ -94,6 +94,18 @@ export type TrackedReport = {
     visibility: "public" | "internal";
     createdAt: string;
   }>;
+};
+
+export type PublicMapReport = {
+  trackingCode: string;
+  latitude: number;
+  longitude: number;
+  category: ApiReportCategory;
+  severityLevel: ApiSeverity | null;
+  severityScore: number | null;
+  status: ApiReportStatus;
+  summary: string | null;
+  createdAt: string;
 };
 
 type ApiResponse<T> = {
@@ -191,6 +203,11 @@ export const reportApi = {
 
   async track(trackingCode: string) {
     const response = await apiClient.get<ApiResponse<TrackedReport>>(`reports/track/${encodeURIComponent(trackingCode)}`);
+    return response.data.data;
+  },
+
+  async publicMap() {
+    const response = await apiClient.get<ApiResponse<PublicMapReport[]>>("reports/public/map");
     return response.data.data;
   },
 

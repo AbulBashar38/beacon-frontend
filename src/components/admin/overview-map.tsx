@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Map, { Layer, NavigationControl, Source, type LayerProps } from "react-map-gl/mapbox";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Map, { Layer, NavigationControl, Source, type LayerProps, type MapRef } from "react-map-gl/mapbox";
 import { AlertTriangle, Layers3, LoaderCircle, MapPin } from "lucide-react";
 
 import { createIssueMapData } from "@/lib/admin-map-data";
@@ -34,7 +34,7 @@ const markerLayer: LayerProps = {
   type: "circle",
   paint: {
     "circle-radius": ["interpolate", ["linear"], ["get", "severityScore"], 1, 5, 4, 14],
-    "circle-color": ["interpolate", ["linear"], ["get", "severity"], 0.4, "#22d3ee", 0.7, "#f59e0b", 1, "#ef4444"],
+    "circle-color": ["match", ["get", "severity"], "Critical", "#ef4444", "High", "#f97316", "Medium", "#f59e0b", "#22d3ee"],
     "circle-opacity": 0.82,
     "circle-stroke-color": "#f8fafc",
     "circle-stroke-width": 1.5,
@@ -42,12 +42,29 @@ const markerLayer: LayerProps = {
 };
 
 export function OverviewMap({ issues }: { issues: AdminIssue[] }) {
-  const [mode, setMode] = useState<"heat" | "markers">("heat");
+  const mapRef = useRef<MapRef>(null);
+  const [mode, setMode] = useState<"heat" | "markers">("markers");
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
   const style = process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? "mapbox://styles/mapbox/dark-v11";
   const mapData = useMemo(() => createIssueMapData(issues), [issues]);
+  const unmappedCount = issues.length - mapData.features.length;
+
+  useEffect(() => {
+    if (!loaded || !mapData.features.length) return;
+    const points = mapData.features.map((feature) => feature.geometry.coordinates);
+    if (points.length === 1) {
+      mapRef.current?.easeTo({ center: points[0] as [number, number], zoom: 9, duration: 700 });
+      return;
+    }
+    const longitudes = points.map(([longitude]) => longitude);
+    const latitudes = points.map(([, latitude]) => latitude);
+    mapRef.current?.fitBounds(
+      [[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]],
+      { padding: 60, maxZoom: 9, duration: 700 },
+    );
+  }, [loaded, mapData]);
 
   if (!token || failed) {
     return (
@@ -64,17 +81,19 @@ export function OverviewMap({ issues }: { issues: AdminIssue[] }) {
   return (
     <div className="relative min-h-[420px] overflow-hidden">
       {!loaded && <div className="absolute inset-0 z-20 grid place-items-center bg-slate-950"><span className="flex items-center gap-2 text-xs text-slate-400"><LoaderCircle className="size-4 animate-spin text-teal-300" />Loading operational map</span></div>}
+      {loaded && !mapData.features.length ? <div className="absolute inset-0 z-10 grid place-items-center bg-slate-950/75 p-8 text-center"><p className="max-w-sm text-xs leading-5 text-slate-400">No submitted reports currently contain coordinates. Reports appear here after a citizen selects a map location.</p></div> : null}
       <div className="absolute left-4 top-4 z-10 flex rounded-lg border border-white/10 bg-slate-950/90 p-1 shadow-lg backdrop-blur">
         <MapModeButton active={mode === "heat"} onClick={() => setMode("heat")} icon={<Layers3 className="size-3.5" />} label="Heat" />
         <MapModeButton active={mode === "markers"} onClick={() => setMode("markers")} icon={<MapPin className="size-3.5" />} label="Markers" />
       </div>
       <div className="absolute bottom-4 left-4 z-10 rounded-lg border border-white/10 bg-slate-950/90 px-3 py-2 backdrop-blur">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">Issue density</p>
+        <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">{mapData.features.length} mapped{unmappedCount ? ` · ${unmappedCount} without coordinates` : ""}</p>
         <div className="mt-1.5 flex items-center gap-2 text-[10px] text-slate-400">
           <span>Low</span><span className="h-1.5 w-24 rounded-full bg-gradient-to-r from-cyan-400 via-amber-400 to-red-500" /><span>Critical</span>
         </div>
       </div>
       <Map
+        ref={mapRef}
         mapboxAccessToken={token}
         initialViewState={{ longitude: 90.35, latitude: 23.75, zoom: 5.65 }}
         minZoom={5}
