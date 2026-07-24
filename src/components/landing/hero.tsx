@@ -160,7 +160,7 @@ function ConsolePanel() {
             <Legend color="var(--map-heat-low)" label="Low" />
           </div>
           <span className="font-mono text-[10px] text-console-muted">
-            MapLibre · OpenFreeMap
+            Mapbox · Live density
           </span>
         </div>
       </div>

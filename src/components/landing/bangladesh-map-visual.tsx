@@ -1,92 +1,143 @@
 "use client";
 
-import { motion } from "motion/react";
+import { useState } from "react";
+import Map, {
+  Layer,
+  NavigationControl,
+  Source,
+  type LayerProps,
+} from "react-map-gl/mapbox";
+import { AlertTriangle, LoaderCircle } from "lucide-react";
 
-import { heroHotspots, type MapHotspot } from "@/lib/landing-data";
+import { bangladeshHeatmapData } from "@/lib/bangladesh-heatmap-data";
 
-const severityColor: Record<MapHotspot["severity"], string> = {
-  low: "var(--map-heat-low)",
-  medium: "var(--map-heat-medium)",
-  high: "var(--map-heat-high)",
+const heatmapLayer: LayerProps = {
+  id: "civic-issue-heat",
+  type: "heatmap",
+  maxzoom: 11,
+  paint: {
+    "heatmap-weight": [
+      "interpolate",
+      ["linear"],
+      ["get", "issueCount"],
+      0,
+      0,
+      300,
+      1,
+    ],
+    "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 4, 0.8, 9, 2.2],
+    "heatmap-color": [
+      "interpolate",
+      ["linear"],
+      ["heatmap-density"],
+      0,
+      "rgba(8,145,178,0)",
+      0.2,
+      "rgba(34,211,238,0.55)",
+      0.45,
+      "rgba(16,185,129,0.72)",
+      0.68,
+      "rgba(245,158,11,0.84)",
+      0.86,
+      "rgba(249,115,22,0.92)",
+      1,
+      "rgba(239,68,68,1)",
+    ],
+    "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 4, 18, 9, 46],
+    "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 7, 0.9, 11, 0.35],
+  },
 };
 
-/** Stylized, abstract Bangladesh silhouette (decorative, not to scale). */
-const COUNTRY_PATH =
-  "M40 8 L52 10 L54 16 L62 15 L66 22 L64 30 L72 30 L80 34 L78 44 L84 52 L80 62 L72 60 L76 70 L70 80 L60 82 L58 74 L50 82 L44 78 L46 68 L38 74 L32 68 L36 60 L28 62 L24 54 L30 46 L26 38 L32 34 L30 26 L36 22 L34 14 Z";
+const hotspotLayer: LayerProps = {
+  id: "civic-issue-centres",
+  type: "circle",
+  minzoom: 6.5,
+  paint: {
+    "circle-radius": ["interpolate", ["linear"], ["get", "issueCount"], 40, 3, 300, 8],
+    "circle-color": "#f8fafc",
+    "circle-stroke-color": "#0f172a",
+    "circle-stroke-width": 1.5,
+    "circle-opacity": ["interpolate", ["linear"], ["zoom"], 6.5, 0, 8, 0.95],
+  },
+};
 
 export function BangladeshMapVisual() {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasMapError, setHasMapError] = useState(false);
+  const accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+  const mapStyle =
+    process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? "mapbox://styles/mapbox/dark-v11";
+
+  if (!accessToken) {
+    return (
+      <MapNotice
+        title="Map token required"
+        message="Add NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN to .env.local to load the Bangladesh heatmap."
+      />
+    );
+  }
+
+  if (hasMapError) {
+    return (
+      <MapNotice
+        title="Map unavailable"
+        message="Check the Mapbox token and its allowed URLs, then reload this page."
+      />
+    );
+  }
+
   return (
-    <div className="relative aspect-[4/5] w-full">
-      <svg
-        viewBox="0 0 100 100"
-        className="h-full w-full overflow-visible"
-        role="img"
-        aria-label="Live civic issue signals across Bangladesh"
+    <div
+      className="relative aspect-[4/5] w-full overflow-hidden rounded-lg bg-slate-950"
+      aria-label="Interactive heatmap of civic issue reports across Bangladesh"
+    >
+      {!isLoaded && (
+        <div className="absolute inset-0 z-10 grid place-items-center bg-slate-950">
+          <div className="flex items-center gap-2 text-xs text-console-muted">
+            <LoaderCircle className="size-4 animate-spin text-primary" />
+            Loading national issue grid
+          </div>
+        </div>
+      )}
+
+      <Map
+        mapboxAccessToken={accessToken}
+        initialViewState={{
+          longitude: 90.35,
+          latitude: 23.75,
+          zoom: 5.55,
+        }}
+        minZoom={5}
+        maxZoom={12}
+        maxBounds={[
+          [87.6, 19.8],
+          [93.2, 27.1],
+        ]}
+        mapStyle={mapStyle}
+        attributionControl={false}
+        reuseMaps
+        onLoad={() => setIsLoaded(true)}
+        onError={() => setHasMapError(true)}
+        style={{ width: "100%", height: "100%" }}
       >
-        <defs>
-          <linearGradient id="beacon-land" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="color-mix(in oklch, var(--primary), transparent 78%)" />
-            <stop offset="100%" stopColor="color-mix(in oklch, var(--accent), transparent 86%)" />
-          </linearGradient>
-        </defs>
+        <NavigationControl position="top-right" showCompass={false} />
+        <Source id="bangladesh-civic-issues" type="geojson" data={bangladeshHeatmapData}>
+          <Layer {...heatmapLayer} />
+          <Layer {...hotspotLayer} />
+        </Source>
+      </Map>
+    </div>
+  );
+}
 
-        {/* connective route lines between hotspots */}
-        <g
-          stroke="color-mix(in oklch, var(--primary-foreground), transparent 82%)"
-          strokeWidth="0.35"
-          strokeDasharray="1.5 1.5"
-          fill="none"
-        >
-          <line x1="52" y1="46" x2="74" y2="66" />
-          <line x1="52" y1="46" x2="78" y2="32" />
-          <line x1="52" y1="46" x2="30" y2="40" />
-          <line x1="52" y1="46" x2="50" y2="74" />
-        </g>
-
-        <motion.path
-          d={COUNTRY_PATH}
-          fill="url(#beacon-land)"
-          stroke="color-mix(in oklch, var(--primary), transparent 40%)"
-          strokeWidth="0.6"
-          strokeLinejoin="round"
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
-        />
-
-        {heroHotspots.map((spot, i) => {
-          const color = severityColor[spot.severity];
-          return (
-            <g key={spot.id}>
-              <motion.circle
-                cx={spot.x}
-                cy={spot.y}
-                r={3.5}
-                fill={color}
-                opacity={0.35}
-                initial={{ scale: 0.6, opacity: 0.4 }}
-                animate={{ scale: [0.6, 2.4], opacity: [0.4, 0] }}
-                transition={{
-                  duration: 2.4,
-                  repeat: Infinity,
-                  delay: i * 0.35,
-                  ease: "easeOut",
-                }}
-                style={{ transformOrigin: `${spot.x}px ${spot.y}px` }}
-              />
-              <motion.circle
-                cx={spot.x}
-                cy={spot.y}
-                r={1.6}
-                fill={color}
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.8 + i * 0.12, duration: 0.4 }}
-              />
-            </g>
-          );
-        })}
-      </svg>
+function MapNotice({ title, message }: { title: string; message: string }) {
+  return (
+    <div className="grid aspect-[4/5] w-full place-items-center rounded-lg bg-slate-950 p-8 text-center">
+      <div className="max-w-64">
+        <AlertTriangle className="mx-auto mb-3 size-6 text-warning" aria-hidden="true" />
+        <p className="text-sm font-semibold text-console-foreground">{title}</p>
+        <p className="mt-1 text-xs leading-relaxed text-console-muted">{message}</p>
+      </div>
     </div>
   );
 }
