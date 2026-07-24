@@ -97,7 +97,7 @@ export function QuickReportForm() {
     code: string;
     title: string;
   } | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"tracking" | "report" | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const category = useWatch({ control, name: "category" });
@@ -153,8 +153,15 @@ export function QuickReportForm() {
   async function copyCode() {
     if (!submitted) return;
     await navigator.clipboard.writeText(submitted.code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+    setCopied("tracking");
+    setTimeout(() => setCopied(null), 1800);
+  }
+
+  async function copyReportId() {
+    if (!submitted) return;
+    await navigator.clipboard.writeText(submitted.id);
+    setCopied("report");
+    setTimeout(() => setCopied(null), 1800);
   }
 
   const onSubmit = handleSubmit(async (values) => {
@@ -203,7 +210,8 @@ export function QuickReportForm() {
             reportId={submitted.id}
             title={submitted.title}
             copied={copied}
-            onCopy={copyCode}
+            onCopyTracking={copyCode}
+            onCopyReportId={copyReportId}
             onReset={() => {
               setSubmitted(null);
               if (photo) URL.revokeObjectURL(photo.url);
@@ -476,14 +484,16 @@ function SuccessState({
   code,
   title,
   copied,
-  onCopy,
+  onCopyTracking,
+  onCopyReportId,
   onReset,
 }: {
   reportId: string;
   code: string;
   title: string;
-  copied: boolean;
-  onCopy: () => void;
+  copied: "tracking" | "report" | null;
+  onCopyTracking: () => void;
+  onCopyReportId: () => void;
   onReset: () => void;
 }) {
   return (
@@ -525,18 +535,24 @@ function SuccessState({
             variant="ghost"
             size="icon-sm"
             aria-label="Copy tracking code"
-            onClick={onCopy}
+            onClick={onCopyTracking}
           >
-            {copied ? (
+            {copied === "tracking" ? (
               <Check className="text-success" />
             ) : (
               <Copy />
             )}
           </Button>
         </div>
-        <p className="mt-3 border-t border-border pt-3 font-mono text-xs text-muted-foreground">
-          Internal reference: {reportId}
-        </p>
+        <div className="mt-3 border-t border-border pt-3">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Internal report ID</p>
+          <div className="mt-1 flex items-center justify-center gap-1">
+            <span className="min-w-0 break-all font-mono text-xs text-muted-foreground">{reportId}</span>
+            <Button type="button" variant="ghost" size="icon-sm" aria-label="Copy internal report ID" onClick={onCopyReportId}>
+              {copied === "report" ? <Check className="text-success" /> : <Copy />}
+            </Button>
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row">
