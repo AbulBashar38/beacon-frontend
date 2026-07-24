@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AdminShell } from "@/components/layout/admin-shell";
+import { AdminAuthGuard } from "@/components/auth/admin-auth-guard";
 
 export const metadata: Metadata = {
   title: "Operations Dashboard",
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <AdminShell>{children}</AdminShell>;
+  return (
+    <AdminAuthGuard>
+      <AdminShell>{children}</AdminShell>
+    </AdminAuthGuard>
+  );
 }

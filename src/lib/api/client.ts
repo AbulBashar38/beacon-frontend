@@ -1,4 +1,5 @@
 import axios, { AxiosError } from "axios";
+import { clearAuthSession, getAccessToken } from "@/lib/auth-session";
 
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/";
@@ -14,11 +15,21 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
-    const accessToken = window.localStorage.getItem("beacon_access_token");
+    const accessToken = getAccessToken();
     if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
   }
   return config;
 });
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    if (error.response?.status === 401 && typeof window !== "undefined") {
+      clearAuthSession();
+    }
+    return Promise.reject(error);
+  },
+);
 
 export function getApiErrorMessage(error: unknown, fallback: string) {
   if (error instanceof AxiosError) {

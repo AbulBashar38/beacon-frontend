@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api/client";
+import type { AuthUser } from "@/lib/auth-session";
 
 export type ApiReportCategory = "pothole" | "broken_streetlight" | "water_leak" | "illegal_dumping" | "other";
 export type ApiSeverity = "low" | "medium" | "high" | "critical";
@@ -22,6 +23,7 @@ export type ApiReport = {
   canonicalSummary: string | null;
   language: "bn" | "en" | "unknown";
   imageUrls: string[];
+  evidenceUrls: string[];
   status: ApiReportStatus;
   assignedDepartment: ApiDepartment | null;
   duplicateOfId: string | null;
@@ -64,6 +66,7 @@ export type TrackedReport = {
   department: ApiDepartment | null;
   language: "bn" | "en" | "unknown";
   images: string[];
+  evidenceUrls: string[];
   createdAt: string;
   progress: Array<{
     id: string;
@@ -90,6 +93,7 @@ export type CreateReportInput = {
   latitude?: number;
   longitude?: number;
   imageUrls?: string[];
+  evidenceUrls?: string[];
   language?: "bn" | "en" | "unknown";
   category?: ApiReportCategory;
 };
@@ -110,8 +114,19 @@ export type ReportQuery = {
 
 export const authApi = {
   async login(input: { email: string; password: string }) {
-    const response = await apiClient.post<ApiResponse<{ accessToken: string }>>("auth/login", input);
+    const response = await apiClient.post<ApiResponse<{ accessToken: string; user: AuthUser }>>("auth/login", input);
     return response.data.data;
+  },
+  async register(input: { name: string; email: string; password: string }) {
+    const response = await apiClient.post<ApiResponse<AuthUser & { createdAt: string }>>("auth/register", input);
+    return response.data.data;
+  },
+  async me() {
+    const response = await apiClient.get<ApiResponse<AuthUser>>("auth/me");
+    return response.data.data;
+  },
+  async logout() {
+    await apiClient.post("auth/logout");
   },
 };
 
@@ -131,6 +146,11 @@ export const reportApi = {
 
   async getById(id: string) {
     const response = await apiClient.get<ApiResponse<ApiReport>>(`reports/${id}`);
+    return response.data.data;
+  },
+
+  async mine() {
+    const response = await apiClient.get<ApiResponse<ApiReport[]>>("reports/mine");
     return response.data.data;
   },
 

@@ -19,6 +19,7 @@ import { SocialButtons } from "@/components/auth/social-buttons";
 import { AuthDivider } from "@/components/auth/auth-divider";
 import { authApi } from "@/lib/api/report-api";
 import { getApiErrorMessage } from "@/lib/api/client";
+import { saveAuthSession } from "@/lib/auth-session";
 
 const schema = z.object({
   email: z.string().min(1, "Enter your email").email("Enter a valid email"),
@@ -42,28 +43,31 @@ export function LoginForm() {
 
   const [serverError, setServerError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [destination, setDestination] = useState("/");
 
   const onSubmit = handleSubmit(async (values) => {
     setServerError(null);
     try {
-      const { accessToken } = await authApi.login({
+      const { accessToken, user } = await authApi.login({
         email: values.email,
         password: values.password,
       });
-      window.localStorage.setItem("beacon_access_token", accessToken);
+      const target = user.role === "admin" ? "/admin/dashboard" : "/dashboard";
+      saveAuthSession(accessToken, user, values.remember ?? true);
+      setDestination(target);
+      setDone(true);
+      await new Promise((resolve) => setTimeout(resolve, 450));
+      router.replace(target);
     } catch (error) {
       setServerError(getApiErrorMessage(error, "We couldn't sign you in. Check your details and retry."));
       return;
     }
-    setDone(true);
-    await new Promise((resolve) => setTimeout(resolve, 450));
-    router.replace("/admin/dashboard");
   });
 
   return (
     <AnimatePresence mode="wait" initial={false}>
       {done ? (
-        <AuthSuccess key="done" />
+        <AuthSuccess key="done" destination={destination} />
       ) : (
         <motion.div
           key="form"
@@ -170,7 +174,7 @@ export function LoginForm() {
   );
 }
 
-function AuthSuccess() {
+function AuthSuccess({ destination }: { destination: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -189,13 +193,11 @@ function AuthSuccess() {
         <h1 className="font-heading text-2xl font-semibold tracking-tight">
           You&apos;re signed in
         </h1>
-        <p className="text-sm text-muted-foreground">
-          Welcome back to Beacon. Opening your operations dashboard…
-        </p>
+        <p className="text-sm text-muted-foreground">Welcome back to Beacon. Opening your workspace…</p>
       </div>
       <Button asChild size="xl" variant="hero" className="w-full">
-        <Link href="/admin/dashboard">
-          Continue to dashboard
+        <Link href={destination}>
+          Continue
           <ArrowRight data-icon="inline-end" />
         </Link>
       </Button>

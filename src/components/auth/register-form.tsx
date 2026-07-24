@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -17,6 +18,9 @@ import { PasswordInput } from "@/components/auth/password-input";
 import { PasswordStrength } from "@/components/auth/password-strength";
 import { SocialButtons } from "@/components/auth/social-buttons";
 import { AuthDivider } from "@/components/auth/auth-divider";
+import { authApi } from "@/lib/api/report-api";
+import { getApiErrorMessage } from "@/lib/api/client";
+import { saveAuthSession } from "@/lib/auth-session";
 
 const schema = z
   .object({
@@ -40,6 +44,7 @@ const schema = z
 type FormValues = z.infer<typeof schema>;
 
 export function RegisterForm() {
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -57,12 +62,24 @@ export function RegisterForm() {
 
   const onSubmit = handleSubmit(async (values) => {
     setServerError(null);
-    await new Promise((r) => setTimeout(r, 1000));
-    if (values.email.startsWith("taken")) {
-      setServerError("An account with that email already exists.");
+    try {
+      await authApi.register({
+        name: values.name,
+        email: values.email,
+        password: values.password,
+      });
+      const { accessToken, user } = await authApi.login({
+        email: values.email,
+        password: values.password,
+      });
+      saveAuthSession(accessToken, user, true);
+    } catch (error) {
+      setServerError(getApiErrorMessage(error, "We couldn't create your account. Please try again."));
       return;
     }
     setDone(true);
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    router.replace("/dashboard");
   });
 
   if (done) {
@@ -90,8 +107,8 @@ export function RegisterForm() {
           </p>
         </div>
         <Button asChild size="xl" variant="hero" className="w-full">
-          <Link href="/">
-            Get started
+          <Link href="/dashboard">
+            Continue to dashboard
             <ArrowRight data-icon="inline-end" />
           </Link>
         </Button>

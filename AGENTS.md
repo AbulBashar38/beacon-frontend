@@ -12,54 +12,155 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 **Beacon** — an AI-powered civic infrastructure reporting platform for the **AI & API Hackathon 2026**. Citizens report public infrastructure problems; government administrators review, manage, visualize, and resolve them.
 
-# AI Instruction: Build a Premium Civic Infrastructure Platform UI
+# AI Instruction: Build a Complete Civic Infrastructure Platform
 
-You are acting as a senior product designer and senior frontend engineer.
+You are acting as a senior full-stack engineer and senior product designer.
 
-Design and implement a premium, highly polished, responsive frontend for an AI-powered civic infrastructure reporting platform for the **AI & API Hackathon 2026**.
+Design and implement the complete AI-powered civic infrastructure reporting platform for the **AI & API Hackathon 2026**, including its frontend, backend API, database integration, AI workflows, tests, and developer documentation.
 
 The product allows citizens to report public infrastructure problems and allows government administrators to review, manage, visualize, and resolve those reports.
 
-The UI must look like a serious, modern public-sector intelligence platform rather than a generic SaaS dashboard or a default shadcn/ui template.
+The UI must look like a serious, modern public-sector intelligence platform rather than a generic SaaS dashboard or a default shadcn/ui template. The backend must provide secure, validated, persistent, well-documented APIs that support the complete report lifecycle.
 
-The final interface should be visually impressive during a live hackathon demonstration while remaining usable, accessible, responsive, and realistic.
+The final solution should be visually impressive during a live hackathon demonstration while remaining functional, secure, accessible, responsive, maintainable, and realistic.
 
 ---
 
-# Technology Stack
+# Full-Stack Repository Scope
 
-Use:
+Treat this repository as a full-stack workspace:
 
 ```text
-Next.js with App Router
+Frontend:  repository root and src/
+Backend:   backend/
+Product requirements: requirement.md
+Engineering checklist: docs/implementation-requirements.md
+Backend requirements: backend/REQUIREMENTS.md
+```
+
+Before changing either application:
+
+- Read the relevant requirement and existing implementation.
+- Inspect both sides of any API contract affected by the change.
+- Do not invent endpoint paths, enum values, request fields, or response shapes.
+- Keep API types, UI mappers, validation, and database models aligned.
+- Prefer end-to-end completion over isolated mock UI.
+- Do not silently fall back to mock data when a production API request fails.
+
+## Frontend stack
+
+```text
+Next.js 16 with App Router
+React 19
 TypeScript
 shadcn/ui
 Tailwind CSS
-Framer Motion
+Motion for React
 Lucide React
 React Hook Form
 Zod
+Axios
 Recharts
-MapLibre GL JS + OpenFreeMap (via react-map-gl/maplibre)
+Mapbox GL JS through react-map-gl/mapbox
 next-themes
 ```
 
-## Map stack (important)
+The bundled Next.js documentation rule at the top of this file applies to frontend work. Read the relevant guide in `node_modules/next/dist/docs/` before changing Next.js APIs, routing, caching, rendering, forms, or configuration.
 
-Use **MapLibre GL JS + OpenFreeMap**. Do **not** use Mapbox GL JS or any Mapbox-hosted tiles, styles, or SDK.
+## Backend stack
 
 ```text
-Library:   maplibre-gl (React wrapper: react-map-gl/maplibre)
-Tiles:     OpenFreeMap (no access token required)
-Style URL: https://tiles.openfreemap.org/styles/liberty  (configurable via env)
+Node.js
+Express 5
+TypeScript
+PostgreSQL
+Prisma
+Zod
+JWT + bcryptjs
+OpenAI API
+Swagger / OpenAPI
+Vitest + Supertest
 ```
 
-Rules:
+Backend code belongs in `backend/src`, Prisma schemas and migrations belong in `backend/prisma`, and backend tests belong in `backend/src/__tests__`.
 
-- Import from `maplibre-gl` and `maplibre-gl/dist/maplibre-gl.css` — never `mapbox-gl`.
-- No Mapbox access token, dependency, or tile/style URL anywhere in the project.
-- Keep the style URL configurable via an env var, defaulting to an OpenFreeMap style.
-- If any Mapbox reference appears, replace it with the MapLibre/OpenFreeMap equivalent.
+## Map and location stack
+
+Use **Mapbox GL JS**, **react-map-gl/mapbox**, and the **Mapbox Geocoding API v6**.
+
+```text
+Map library:       mapbox-gl
+React wrapper:     react-map-gl/mapbox
+Address search:    https://api.mapbox.com/search/geocode/v6
+Access token env:  NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
+Style env:         NEXT_PUBLIC_MAP_STYLE_URL
+```
+
+Map rules:
+
+- Import Mapbox components from `react-map-gl/mapbox`.
+- Import global map CSS from `mapbox-gl/dist/mapbox-gl.css`.
+- Keep the access token and style configurable through environment variables.
+- Restrict citizen address search to Bangladesh where appropriate.
+- Persist structured address text and coordinates selected by the user.
+- Use native Mapbox camera transitions for map movement.
+- Do not expose secret Mapbox tokens; browser tokens must be public `pk.*` tokens.
+
+## API integration rules
+
+- The frontend API base URL is `NEXT_PUBLIC_API_BASE_URL`, defaulting locally to `http://localhost:8080/api/`.
+- Use the shared Axios client in `src/lib/api/client.ts`.
+- Protected requests must send the admin JWT.
+- Public tracking responses must never expose citizen PII or internal notes.
+- Translate backend enums to user-facing labels in dedicated mapper modules.
+- Validate inputs on both the frontend and backend.
+- Keep success and error responses consistent.
+- Handle loading, empty, offline, unauthorized, validation, timeout, and retry states.
+- When adding or changing an endpoint, update Swagger documentation and relevant tests.
+
+## Database and migration rules
+
+- Use Prisma for database access.
+- Never edit an already-applied migration to change production behavior; create a new migration.
+- Preserve report history, progress updates, duplicate links, and audit information.
+- Avoid destructive data operations unless the user explicitly requests them.
+- Review generated SQL before applying schema changes.
+
+## Full-stack definition of done
+
+A full-stack feature is complete only when:
+
+- The real frontend flow calls the real backend endpoint.
+- Request and response types match the backend contract.
+- Server-side and client-side validation are present.
+- Authentication and authorization are enforced where required.
+- Database writes are persistent and transaction-safe where appropriate.
+- Loading, success, empty, and recoverable error states are implemented.
+- Public views do not expose sensitive data.
+- Relevant frontend and backend tests pass.
+- Frontend passes `npm run lint` and `npm run build`.
+- Backend passes `npm run build` and relevant `npm test` suites.
+- The feature can be demonstrated end-to-end with both applications running.
+
+## Verification commands
+
+Frontend commands run from the repository root:
+
+```bash
+npm run lint
+npm run build
+npm run dev
+```
+
+Backend commands run from `backend/`:
+
+```bash
+npm run build
+npm test
+npm start
+```
+
+Do not claim an end-to-end integration is verified when the backend, database, or required external service was unavailable. Clearly distinguish compile-time verification from runtime verification.
 
 Use GSAP only when Framer Motion is not suitable, such as:
 
@@ -1303,21 +1404,28 @@ Professional presentation
 
 Produce:
 
-1. Complete frontend architecture
-2. Reusable design system
+1. Complete full-stack architecture
+2. Reusable frontend design system
 3. Customized shadcn components
 4. Responsive citizen portal
-5. Responsive admin dashboard
-6. Animated Bangladesh map interface
-7. Issue management experience
-8. Tracking timeline
-9. Report builder and preview
-10. Realistic mock data
-11. Loading, empty, error, and success states
-12. Clean TypeScript code
-13. No duplicated UI code
-14. Minimal page-level Tailwind class clutter
-15. Accessible animation and interaction
+5. Responsive government dashboard
+6. Interactive Bangladesh map and structured address search
+7. End-to-end issue management experience
+8. Public tracking and progress timeline
+9. Department assignment, status management, and progress updates
+10. AI categorization, severity assessment, and duplicate detection
+11. Persistent PostgreSQL data through Prisma
+12. Secure authentication and authorization
+13. Typed Axios API integration
+14. Swagger API documentation
+15. Frontend and backend validation
+16. Relevant unit and integration tests
+17. Loading, empty, error, and success states
+18. Clean, modular TypeScript code
+19. No duplicated business or UI logic
+20. Accessible animation and interaction
+
+Use realistic mock data only before a backend endpoint exists. Once an endpoint is available, connect the real API and surface backend failures explicitly.
 
 Before finishing each screen, evaluate:
 

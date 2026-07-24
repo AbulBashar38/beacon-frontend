@@ -27,12 +27,7 @@ import { issueCategories, toneClasses } from "@/lib/landing-data";
 import { getApiErrorMessage } from "@/lib/api/client";
 import { reportApi, type ApiReportCategory } from "@/lib/api/report-api";
 import { reverseGeocodeBangladesh } from "@/lib/mapbox-geocoding";
-
-const severities = [
-  { value: "low", label: "Low", color: "var(--map-heat-low)" },
-  { value: "medium", label: "Moderate", color: "var(--map-heat-medium)" },
-  { value: "high", label: "Critical", color: "var(--map-heat-high)" },
-] as const;
+import { uploadReportImage } from "@/lib/cloudinary-upload";
 
 const schema = z.object({
   category: z.string().min(1, "Choose the type of issue"),
@@ -44,8 +39,16 @@ const schema = z.object({
     .string()
     .min(15, "Tell us a little more so the right team can act")
     .max(600, "Keep the description under 600 characters"),
-  severity: z.enum(["low", "medium", "high"]),
   location: z.string().min(4, "Add an address, area or landmark"),
+  evidenceUrl: z
+    .union([
+      z.literal(""),
+      z
+        .string()
+        .url("Enter a valid http or https URL")
+        .refine((value) => /^https?:\/\//i.test(value), "Enter a valid http or https URL"),
+    ])
+    .optional(),
   contact: z
     .string()
     .max(60)
@@ -76,18 +79,20 @@ export function QuickReportForm() {
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     mode: "onTouched",
-    defaultValues: { severity: "medium", category: "", location: "" },
+    defaultValues: { category: "", location: "", evidenceUrl: "" },
   });
 
-  const [photo, setPhoto] = useState<{ url: string; name: string } | null>(
+  const [photo, setPhoto] = useState<{ url: string; name: string; file: File } | null>(
     null,
   );
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
   const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<{
+    id: string;
     code: string;
     title: string;
   } | null>(null);
@@ -95,7 +100,6 @@ export function QuickReportForm() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const category = useWatch({ control, name: "category" });
-  const severity = useWatch({ control, name: "severity" });
   const location = useWatch({ control, name: "location" });
 
   function handleFiles(files: FileList | null) {
@@ -111,7 +115,7 @@ export function QuickReportForm() {
       return;
     }
     if (photo) URL.revokeObjectURL(photo.url);
-    setPhoto({ url: URL.createObjectURL(file), name: file.name });
+    setPhoto({ url: URL.createObjectURL(file), name: file.name, file });
   }
 
   function useCurrentLocation() {
@@ -154,18 +158,23 @@ export function QuickReportForm() {
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null);
+    setUploadProgress(0);
     try {
+      const uploadedImageUrl = photo
+        ? await uploadReportImage(photo.file, { onProgress: setUploadProgress })
+        : undefined;
       const report = await reportApi.create({
-        description: `${values.title}\n\n${values.description}\n\nCitizen urgency: ${values.severity}`,
+        description: `${values.title}\n\n${values.description}`,
         locationText: values.location,
         contact: values.contact || undefined,
         category: apiCategory[values.category] ?? "other",
         language: "en",
         latitude: coordinates?.latitude,
         longitude: coordinates?.longitude,
-        imageUrls: [],
+        imageUrls: uploadedImageUrl ? [uploadedImageUrl] : [],
+        evidenceUrls: values.evidenceUrl ? [values.evidenceUrl] : [],
       });
-      setSubmitted({ code: report.trackingCode, title: values.title });
+      setSubmitted({ id: report.id, code: report.trackingCode, title: values.title });
     } catch (error) {
       setSubmitError(getApiErrorMessage(error, "We couldn't submit this report. Please try again."));
     }
@@ -190,12 +199,15 @@ export function QuickReportForm() {
           <SuccessState
             key="success"
             code={submitted.code}
+            reportId={submitted.id}
             title={submitted.title}
             copied={copied}
             onCopy={copyCode}
             onReset={() => {
               setSubmitted(null);
+              if (photo) URL.revokeObjectURL(photo.url);
               setPhoto(null);
+              setUploadProgress(0);
               window.location.hash = "#report";
             }}
           />
@@ -286,46 +298,6 @@ export function QuickReportForm() {
                 aria-invalid={!!errors.description}
                 {...register("description")}
               />
-            </Field>
-
-            {/* severity */}
-            <Field label="How urgent is it?" required>
-              <div className="grid grid-cols-3 gap-2">
-                {severities.map((s) => {
-                  const active = severity === s.value;
-                  return (
-                    <button
-                      type="button"
-                      key={s.value}
-                      onClick={() =>
-                        setValue("severity", s.value, { shouldTouch: true })
-                      }
-                      aria-pressed={active}
-                      className={cn(
-                        "flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition-all",
-                        active
-                          ? "border-transparent text-foreground ring-2"
-                          : "border-border text-muted-foreground hover:bg-muted/50",
-                      )}
-                      style={
-                        active
-                          ? ({
-                              backgroundColor: `color-mix(in oklch, ${s.color}, transparent 88%)`,
-                              // ring color
-                              "--tw-ring-color": s.color,
-                            } as React.CSSProperties)
-                          : undefined
-                      }
-                    >
-                      <span
-                        className="size-2 rounded-full"
-                        style={{ backgroundColor: s.color }}
-                      />
-                      {s.label}
-                    </button>
-                  );
-                })}
-              </div>
             </Field>
 
             {/* location */}
@@ -432,6 +404,27 @@ export function QuickReportForm() {
                   {photoError}
                 </p>
               ) : null}
+              {photo && isSubmitting ? (
+                <p className="text-xs text-muted-foreground" aria-live="polite">
+                  Uploading evidence… {uploadProgress}%
+                </p>
+              ) : null}
+            </Field>
+
+            <Field
+              label="Supporting link"
+              htmlFor="qr-evidence-url"
+              hint="Optional — link to a video, document, or public post"
+              error={errors.evidenceUrl?.message}
+            >
+              <Input
+                id="qr-evidence-url"
+                type="url"
+                inputMode="url"
+                placeholder="https://example.com/evidence"
+                aria-invalid={!!errors.evidenceUrl}
+                {...register("evidenceUrl")}
+              />
             </Field>
 
             <Field
@@ -479,12 +472,14 @@ export function QuickReportForm() {
 }
 
 function SuccessState({
+  reportId,
   code,
   title,
   copied,
   onCopy,
   onReset,
 }: {
+  reportId: string;
   code: string;
   title: string;
   copied: boolean;
@@ -539,6 +534,9 @@ function SuccessState({
             )}
           </Button>
         </div>
+        <p className="mt-3 border-t border-border pt-3 font-mono text-xs text-muted-foreground">
+          Report ID: {reportId}
+        </p>
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row">
