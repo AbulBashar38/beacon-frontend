@@ -22,9 +22,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field } from "@/components/forms/field";
 import { FormAlert } from "@/components/forms/form-alert";
+import { AddressFinder } from "@/components/forms/address-finder";
 import { issueCategories, toneClasses } from "@/lib/landing-data";
 import { getApiErrorMessage } from "@/lib/api/client";
 import { reportApi, type ApiReportCategory } from "@/lib/api/report-api";
+import { reverseGeocodeBangladesh } from "@/lib/mapbox-geocoding";
 
 const severities = [
   { value: "low", label: "Low", color: "var(--map-heat-low)" },
@@ -83,6 +85,7 @@ export function QuickReportForm() {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
   const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<{
     code: string;
@@ -93,6 +96,7 @@ export function QuickReportForm() {
 
   const category = useWatch({ control, name: "category" });
   const severity = useWatch({ control, name: "severity" });
+  const location = useWatch({ control, name: "location" });
 
   function handleFiles(files: FileList | null) {
     const file = files?.[0];
@@ -112,22 +116,31 @@ export function QuickReportForm() {
 
   function useCurrentLocation() {
     if (!("geolocation" in navigator)) {
-      setValue("location", "", { shouldValidate: true });
+      setLocationError("Location services are not supported by this browser.");
       return;
     }
     setLocating(true);
+    setLocationError(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-        setValue(
-          "location",
-          `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`,
-          { shouldValidate: true, shouldTouch: true },
-        );
-        setCoordinates({ latitude, longitude });
-        setLocating(false);
+        void reverseGeocodeBangladesh(latitude, longitude)
+          .then((address) => {
+            setValue("location", address.fullAddress, {
+              shouldValidate: true,
+              shouldTouch: true,
+            });
+            setCoordinates({ latitude: address.latitude, longitude: address.longitude });
+          })
+          .catch(() => {
+            setLocationError("We found your position but could not resolve a structured address. Search for a nearby road or landmark.");
+          })
+          .finally(() => setLocating(false));
       },
-      () => setLocating(false),
+      () => {
+        setLocating(false);
+        setLocationError("Location permission was denied. Search for the address instead.");
+      },
       { enableHighAccuracy: true, timeout: 8000 },
     );
   }
@@ -319,16 +332,33 @@ export function QuickReportForm() {
             <Field
               label="Location"
               htmlFor="qr-location"
-              error={errors.location?.message}
+              error={errors.location?.message ?? locationError ?? undefined}
               required
             >
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                  id="qr-location"
-                  className="flex-1"
-                  placeholder="Address, area or landmark"
-                  aria-invalid={!!errors.location}
-                  {...register("location")}
+                <input type="hidden" {...register("location")} />
+                <AddressFinder
+                  value={location}
+                  invalid={Boolean(errors.location || locationError)}
+                  onValueChange={(nextLocation) => {
+                    setLocationError(null);
+                    setCoordinates(null);
+                    setValue("location", nextLocation, {
+                      shouldValidate: true,
+                      shouldTouch: true,
+                    });
+                  }}
+                  onSelect={(address) => {
+                    setLocationError(null);
+                    setCoordinates({
+                      latitude: address.latitude,
+                      longitude: address.longitude,
+                    });
+                    setValue("location", address.fullAddress, {
+                      shouldValidate: true,
+                      shouldTouch: true,
+                    });
+                  }}
                 />
                 <Button
                   type="button"
