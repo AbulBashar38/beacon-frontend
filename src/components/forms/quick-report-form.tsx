@@ -51,7 +51,8 @@ const schema = z.object({
     .optional(),
   contact: z
     .string()
-    .max(60)
+    .email("Enter a valid email address")
+    .max(254)
     .optional()
     .or(z.literal("")),
 });
@@ -436,14 +437,16 @@ export function QuickReportForm() {
             </Field>
 
             <Field
-              label="Contact"
+              label="Email"
               htmlFor="qr-contact"
-              hint="Optional — for status updates"
+              hint="Optional — receive your report ID and tracking code"
               error={errors.contact?.message}
             >
               <Input
                 id="qr-contact"
-                placeholder="Phone or email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
                 {...register("contact")}
               />
             </Field>
