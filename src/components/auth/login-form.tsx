@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -26,6 +27,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function LoginForm() {
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -48,6 +50,8 @@ export function LoginForm() {
       return;
     }
     setDone(true);
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    router.replace("/admin/dashboard");
   });
 
   return (
@@ -180,12 +184,12 @@ function AuthSuccess() {
           You&apos;re signed in
         </h1>
         <p className="text-sm text-muted-foreground">
-          Welcome back to Beacon. Let&apos;s get you moving.
+          Welcome back to Beacon. Opening your operations dashboard…
         </p>
       </div>
       <Button asChild size="xl" variant="hero" className="w-full">
-        <Link href="/">
-          Continue
+        <Link href="/admin/dashboard">
+          Continue to dashboard
           <ArrowRight data-icon="inline-end" />
         </Link>
       </Button>
