@@ -147,9 +147,9 @@ export function IssuesWorkspace() {
             </div>
           )}
 
-          <div className="hidden overflow-x-auto lg:block">
+          <div className="relative isolate hidden max-h-[calc(100vh-15rem)] overflow-auto lg:block">
             <table className="w-full min-w-[1120px] border-separate border-spacing-0 text-left">
-              <thead className="sticky top-16 z-20 bg-slate-900 text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-600 shadow-[0_1px_0_rgba(255,255,255,0.07)]">
+              <thead className="sticky top-0 z-30 bg-slate-900 text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-600 shadow-[0_1px_0_rgba(255,255,255,0.07)]">
                 <tr className="border-b border-white/7">
                   <th className="w-12 px-4 py-3"><Checkbox checked={allVisibleSelected} onChange={() => setSelected(allVisibleSelected ? selected.filter((id) => !visible.some((issue) => issue.id === id)) : Array.from(new Set([...selected, ...visible.map((issue) => issue.id)])))} label="Select visible issues" /></th>
                   <th className="px-3 py-3">Issue</th>
@@ -162,7 +162,7 @@ export function IssuesWorkspace() {
                   <th className="w-12 px-3 py-3"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/6">
+              <tbody className="relative z-0 divide-y divide-white/6">
                 {visible.map((issue) => <IssueRow key={issue.id} issue={issue} selected={selected.includes(issue.id)} onSelect={() => setSelected((items) => items.includes(issue.id) ? items.filter((id) => id !== issue.id) : [...items, issue.id])} />)}
               </tbody>
             </table>
