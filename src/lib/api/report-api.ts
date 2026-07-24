@@ -33,14 +33,42 @@ export type ApiReport = {
 };
 
 export type ApiReportDetails = ApiReport & {
+  citizenId: string | null;
+  citizenCategory: ApiReportCategory | null;
+  normalizedLocation: string | null;
+  aiConfidence: number | null;
   severityRationale: string | null;
-  suggestedAction?: string | null;
+  suggestedAction: string | null;
+  citizen: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
   progressUpdates: Array<{
     id: string;
     status: ApiReportStatus;
     note: string | null;
     visibility: "public" | "internal";
     createdAt: string;
+    updatedBy: {
+      id: string;
+      name: string;
+      email: string;
+    } | null;
+  }>;
+  duplicateParent: {
+    id: string;
+    trackingCode: string;
+    summary: string | null;
+    status: ApiReportStatus;
+  } | null;
+  duplicateChildren: Array<{
+    id: string;
+    trackingCode: string;
+    summary: string | null;
+    createdAt: string;
+    severityLevel: ApiSeverity | null;
+    status: ApiReportStatus;
   }>;
 };
 
