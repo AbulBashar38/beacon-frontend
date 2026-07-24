@@ -6,7 +6,7 @@ const footerNav = [
   {
     heading: "Platform",
     links: [
-      { label: "Report an issue", href: "/report" },
+      { label: "Report an issue", href: "#report" },
       { label: "Track a report", href: "/track" },
       { label: "How it works", href: "#how-it-works" },
     ],
@@ -16,15 +16,12 @@ const footerNav = [
     links: [
       { label: "Admin sign in", href: "/login" },
       { label: "Live map", href: "/admin/map" },
-      { label: "Analytics", href: "/admin/analytics" },
     ],
   },
   {
     heading: "About",
     links: [
       { label: "Categories", href: "#categories" },
-      { label: "Impact", href: "#impact" },
-      { label: "Success stories", href: "#stories" },
     ],
   },
 ];

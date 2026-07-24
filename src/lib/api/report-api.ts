@@ -136,6 +136,24 @@ export type PublicMapReport = {
   createdAt: string;
 };
 
+export type PublicLandingData = {
+  totalReports: number;
+  resolvedReports: number;
+  activeReports: number;
+  mappedReports: number;
+  averageResolutionTimeHours: number | null;
+  recentResolutions: Array<{
+    trackingCode: string;
+    category: ApiReportCategory;
+    locationText: string;
+    summary: string | null;
+    assignedDepartment: ApiDepartment | null;
+    createdAt: string;
+    resolvedAt: string;
+    resolutionHours: number;
+  }>;
+};
+
 type ApiResponse<T> = {
   success: boolean;
   statusCode: number;
@@ -236,6 +254,11 @@ export const reportApi = {
 
   async publicMap() {
     const response = await apiClient.get<ApiResponse<PublicMapReport[]>>("reports/public/map");
+    return response.data.data;
+  },
+
+  async publicLanding() {
+    const response = await apiClient.get<ApiResponse<PublicLandingData>>("reports/public/landing");
     return response.data.data;
   },
 

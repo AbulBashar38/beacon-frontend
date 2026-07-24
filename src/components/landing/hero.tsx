@@ -9,8 +9,14 @@ import { Eyebrow } from "@/components/shared/section";
 import { AnimatedNumber } from "@/components/motion/animated-number";
 import { BangladeshMapVisual } from "@/components/landing/bangladesh-map-visual";
 import { staggerContainer, staggerItem, fadeUp } from "@/lib/motion";
+import { useLandingData } from "@/contexts/landing-data-context";
 
 export function Hero() {
+  const data = useLandingData();
+  const averageDays = data?.averageResolutionTimeHours
+    ? data.averageResolutionTimeHours / 24
+    : null;
+
   return (
     <section className="relative overflow-hidden">
       {/* ambient background */}
@@ -66,14 +72,16 @@ export function Hero() {
             </Button>
           </motion.div>
 
-          <motion.dl
-            variants={staggerItem}
-            className="mt-2 flex flex-wrap items-center gap-x-8 gap-y-4 border-t border-border/70 pt-6"
-          >
-            <Stat value={48250} suffix="+" label="Issues resolved" />
-            <Stat value={64} label="Districts live" />
-            <Stat value={3.4} decimals={1} suffix="d" label="Avg. resolution" />
-          </motion.dl>
+          {data && data.totalReports > 0 ? (
+            <motion.dl
+              variants={staggerItem}
+              className="mt-2 flex flex-wrap items-center gap-x-8 gap-y-4 border-t border-border/70 pt-6"
+            >
+              <Stat value={data.totalReports} label="Reports submitted" />
+              <Stat value={data.resolvedReports} label="Reports resolved" />
+              {averageDays != null ? <Stat value={averageDays} decimals={1} suffix="d" label="Recent avg. resolution" /> : null}
+            </motion.dl>
+          ) : null}
         </motion.div>
 
         <motion.div

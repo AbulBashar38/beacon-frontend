@@ -7,20 +7,23 @@ import { HowItWorks } from "@/components/landing/how-it-works";
 import { ImpactStats } from "@/components/landing/impact-stats";
 import { SuccessStories } from "@/components/landing/success-stories";
 import { CtaBand } from "@/components/landing/cta-band";
+import { LandingDataProvider } from "@/contexts/landing-data-context";
 
 export default function LandingPage() {
   return (
     <>
       <CitizenHeader />
-      <main className="flex-1">
-        <Hero />
-        <ReportSection />
-        <HowItWorks />
-        <CategoriesSection />
-        <ImpactStats />
-        <SuccessStories />
-        <CtaBand />
-      </main>
+      <LandingDataProvider>
+        <main className="flex-1">
+          <Hero />
+          <ReportSection />
+          <HowItWorks />
+          <CategoriesSection />
+          <ImpactStats />
+          <SuccessStories />
+          <CtaBand />
+        </main>
+      </LandingDataProvider>
       <CitizenFooter />
     </>
   );

@@ -84,7 +84,7 @@ export function CitizenHeader() {
                 <Link href="/login">Sign in</Link>
               </Button>
               <Button asChild size="lg">
-                <Link href="/report">Report an issue</Link>
+                <Link href="#report">Report an issue</Link>
               </Button>
             </div>
           </nav>

@@ -1,10 +1,22 @@
+"use client";
+
 import { Section } from "@/components/shared/section";
 import { Stagger, StaggerItem } from "@/components/motion/stagger";
 import { AnimatedNumber } from "@/components/motion/animated-number";
 import { Eyebrow } from "@/components/shared/section";
-import { impactStats } from "@/lib/landing-data";
+import { useLandingData } from "@/contexts/landing-data-context";
 
 export function ImpactStats() {
+  const data = useLandingData();
+  if (!data || data.totalReports === 0) return null;
+
+  const stats = [
+    { label: "Reports submitted", value: data.totalReports, hint: "Accepted by the live Beacon API" },
+    { label: "Reports resolved", value: data.resolvedReports, hint: "Currently marked resolved" },
+    { label: "Active reports", value: data.activeReports, hint: "Pending or being worked on" },
+    { label: "Mapped reports", value: data.mappedReports, hint: "Submitted with valid coordinates" },
+  ];
+
   return (
     <Section id="impact" className="scroll-mt-16">
       <div className="relative overflow-hidden rounded-3xl border border-console-border/50 bg-console px-6 py-14 sm:px-12">
@@ -22,19 +34,16 @@ export function ImpactStats() {
             Platform impact
           </Eyebrow>
           <h2 className="mt-4 font-heading text-3xl font-semibold tracking-tight text-console-foreground text-balance sm:text-4xl">
-            Real infrastructure outcomes, at national scale
+            Current activity from the Beacon reporting system
           </h2>
         </div>
 
         <Stagger className="relative mt-12 grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4">
-          {impactStats.map((stat) => (
+          {stats.map((stat) => (
             <StaggerItem key={stat.label} className="text-center">
               <div className="font-heading text-4xl font-bold tracking-tight text-console-foreground tabular-nums sm:text-5xl">
                 <AnimatedNumber
                   value={stat.value}
-                  decimals={stat.decimals}
-                  prefix={stat.prefix}
-                  suffix={stat.suffix}
                 />
               </div>
               <div className="mt-2 text-sm font-medium text-console-foreground">
