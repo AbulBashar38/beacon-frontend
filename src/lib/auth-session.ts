@@ -19,7 +19,31 @@ export function saveAuthSession(accessToken: string, user: AuthUser, remember: b
 
 export function getAccessToken() {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(TOKEN_KEY) ?? window.sessionStorage.getItem(TOKEN_KEY);
+  const token =
+    window.localStorage.getItem(TOKEN_KEY) ?? window.sessionStorage.getItem(TOKEN_KEY);
+  if (!token) return null;
+
+  try {
+    const encodedPayload = token.split(".")[1];
+    if (!encodedPayload) throw new Error("Invalid token");
+    const normalizedPayload = encodedPayload.replaceAll("-", "+").replaceAll("_", "/");
+    const paddedPayload = normalizedPayload.padEnd(
+      Math.ceil(normalizedPayload.length / 4) * 4,
+      "=",
+    );
+    const payload = JSON.parse(
+      window.atob(paddedPayload),
+    ) as { exp?: number };
+    if (payload.exp && payload.exp * 1000 <= Date.now()) {
+      clearAuthSession();
+      return null;
+    }
+  } catch {
+    clearAuthSession();
+    return null;
+  }
+
+  return token;
 }
 
 export function getAuthUser(): AuthUser | null {
