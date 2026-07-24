@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, Clock3, FileText, Loader2, LogOut, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -14,9 +15,11 @@ function formatLabel(value: string) {
 }
 
 export function CitizenDashboard() {
+  const router = useRouter();
   const [reports, setReports] = useState<ApiReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
   const { user, logout } = useAuth();
 
   useEffect(() => {
@@ -33,8 +36,14 @@ export function CitizenDashboard() {
   }), [reports]);
 
   async function handleLogout() {
-    await logout();
-    window.location.assign("/login");
+    setSigningOut(true);
+    try {
+      await logout();
+      router.replace("/login");
+      router.refresh();
+    } finally {
+      setSigningOut(false);
+    }
   }
 
   return (
@@ -51,7 +60,10 @@ export function CitizenDashboard() {
               <Link href="/"><ArrowLeft />Back to home</Link>
             </Button>
             <Button asChild variant="hero"><Link href="/#report"><Plus />Report an issue</Link></Button>
-            <Button variant="outline" onClick={() => void handleLogout()}><LogOut />Sign out</Button>
+            <Button variant="outline" disabled={signingOut} onClick={() => void handleLogout()}>
+              {signingOut ? <Loader2 className="animate-spin" /> : <LogOut />}
+              {signingOut ? "Signing out…" : "Sign out"}
+            </Button>
           </div>
         </header>
 

@@ -16,8 +16,6 @@ import { FormAlert } from "@/components/forms/form-alert";
 import { AuthHeader } from "@/components/auth/auth-header";
 import { PasswordInput } from "@/components/auth/password-input";
 import { PasswordStrength } from "@/components/auth/password-strength";
-import { SocialButtons } from "@/components/auth/social-buttons";
-import { AuthDivider } from "@/components/auth/auth-divider";
 import { getApiErrorMessage } from "@/lib/api/client";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -129,10 +127,6 @@ export function RegisterForm() {
             </>
           }
         />
-
-        <SocialButtons label="Sign up" />
-
-        <AuthDivider label="or sign up with email" />
 
         <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
           {serverError ? (

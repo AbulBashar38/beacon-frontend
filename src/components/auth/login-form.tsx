@@ -15,8 +15,6 @@ import { Field } from "@/components/forms/field";
 import { FormAlert } from "@/components/forms/form-alert";
 import { AuthHeader } from "@/components/auth/auth-header";
 import { PasswordInput } from "@/components/auth/password-input";
-import { SocialButtons } from "@/components/auth/social-buttons";
-import { AuthDivider } from "@/components/auth/auth-divider";
 import { getApiErrorMessage } from "@/lib/api/client";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -86,10 +84,6 @@ export function LoginForm() {
               </>
             }
           />
-
-          <SocialButtons label="Sign in" />
-
-          <AuthDivider />
 
           <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
             {serverError ? (

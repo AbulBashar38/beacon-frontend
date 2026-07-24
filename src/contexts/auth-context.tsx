@@ -6,6 +6,7 @@ import { authApi } from "@/lib/api/report-api";
 import {
   AUTH_SESSION_EVENT,
   clearAuthSession,
+  getAccessToken,
   getAuthUser,
   saveAuthSession,
   type AuthUser,
@@ -28,10 +29,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
+    if (!getAccessToken()) {
+      setUser(null);
+      setLoading(false);
+      return null;
+    }
     try {
       const current = await authApi.me();
-      setUser(current);
-      return current;
+      if (getAccessToken()) {
+        setUser(current);
+        return current;
+      }
+      setUser(null);
+      return null;
     } catch {
       clearAuthSession();
       setUser(null);
@@ -43,9 +53,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    void authApi.me()
+    const token = getAccessToken();
+    if (!token) {
+      void Promise.resolve().then(() => {
+        if (active) {
+          setUser(null);
+          setLoading(false);
+        }
+      });
+    } else void authApi.me()
       .then((current) => {
-        if (active) setUser(current);
+        if (active && getAccessToken()) setUser(current);
       })
       .catch(() => {
         clearAuthSession();
