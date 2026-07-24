@@ -359,7 +359,7 @@ export function QuickReportForm() {
             </Field>
 
             {/* photo (optional) */}
-            <Field label="Photo" hint="Optional">
+            <Field label="Photo" hint="Optional — AI analyzes visible evidence during triage">
               <input
                 ref={fileRef}
                 type="file"
