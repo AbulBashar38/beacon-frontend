@@ -1,25 +1,77 @@
-# Beacon
+# Beacon — AI-Powered Civic Infrastructure Intelligence
 
-Beacon is an AI-powered civic infrastructure reporting platform built for the
-AI & API Hackathon 2026. Citizens can report public problems such as potholes,
-broken streetlights, water leaks, and illegal dumping. Government
-administrators can review, map, assign, update, and resolve those reports.
+> A citizen-friendly reporting experience and a government-grade operations
+> platform for turning public infrastructure concerns into accountable action.
 
-The repository contains both applications:
+Beacon brings citizens, AI-assisted triage, and government response teams into
+one transparent workflow. People can report and track local infrastructure
+problems, while administrators can prioritize, map, assign, investigate, and
+resolve cases through a national civic operations workspace.
 
-```text
-.
-├── src/       Next.js frontend
-└── backend/   Express, Prisma, and PostgreSQL API
-```
+Built for the **AI & API Hackathon 2026**, Beacon combines accessible public
+service design with multimodal AI, duplicate detection, live geospatial
+intelligence, and a complete report lifecycle.
 
-## Project links
+**[Explore the live application](https://beacon-frontend-mu.vercel.app/)**
+&nbsp;·&nbsp;
+**[View the database ERD](https://drawsql.app/teams/abul-basar/diagrams/beacon)**
+&nbsp;·&nbsp;
+**[Browse the repository](https://github.com/AbulBashar38/beacon-frontend)**
 
-| Resource | URL |
-| --- | --- |
-| Live application | [beacon-frontend-mu.vercel.app](https://beacon-frontend-mu.vercel.app/) |
-| GitHub repository | [AbulBashar38/beacon-frontend](https://github.com/AbulBashar38/beacon-frontend) |
-| Database ERD | [Beacon ERD on DrawSQL](https://drawsql.app/teams/abul-basar/diagrams/beacon) |
+## Product experience
+
+### A clearer way to improve the places we share
+
+Beacon opens with an approachable public experience that explains the mission,
+builds trust, and guides citizens toward reporting or tracking an issue.
+
+![Beacon landing page and hero experience](public/platform-images/hero.png)
+
+### Report infrastructure problems without friction
+
+The guided reporting flow helps citizens describe the problem, add evidence,
+select an accurate Bangladesh location, and review the submission before
+sending it for analysis.
+
+![Beacon citizen infrastructure reporting flow](public/platform-images/report.png)
+
+### Every report, update, and tracking code in one place
+
+Signed-in citizens receive a calm, readable workspace for reviewing their
+reports, current status, tracking codes, and the latest public progress.
+
+![Beacon citizen report history and overview](public/platform-images/report-view-all.png)
+
+### A civic operations command center
+
+Administrators get a purpose-built national overview with operational metrics,
+critical cases, AI-assisted insights, resolution performance, and mapped issue
+coverage.
+
+![Beacon government administration dashboard](public/platform-images/admin-dash.png)
+
+### Geospatial intelligence across Bangladesh
+
+The live map supports marker, cluster, heatmap, district, and severity views,
+with filters and location intelligence designed for rapid operational scanning.
+
+![Beacon live Bangladesh infrastructure issue map](public/platform-images/map-view.png)
+
+### Accountable updates from assignment to resolution
+
+Government operators can inspect the complete case record, assign the
+responsible department, publish citizen-visible progress, and preserve internal
+operational notes in a clear audit history.
+
+![Beacon administrator report update and case management view](public/platform-images/report-update-admin.png)
+
+---
+
+## Repository scope
+
+This repository contains the **Beacon Next.js frontend**. It connects to the
+Beacon API through the configurable `NEXT_PUBLIC_API_BASE_URL`; the API service
+source is maintained separately and is not included here.
 
 ## What Beacon does
 
@@ -47,7 +99,7 @@ The repository contains both applications:
 
 ## AI pipeline
 
-Each submitted report passes through this backend pipeline:
+Each submitted report passes through Beacon’s connected AI processing pipeline:
 
 1. Validate and normalize the request with Zod.
 2. Analyze the description, location, category hint, and uploaded images.
@@ -69,13 +121,11 @@ Each submitted report passes through this backend pipeline:
 | Triage fallback | `gpt-4o` | More capable fallback when the primary call fails |
 | Duplicate embeddings | `text-embedding-3-small` | Semantic similarity across differently worded reports |
 
-Models are configurable through backend environment variables. If AI is
-unavailable, Beacon stores the report with conservative manual-review values
-instead of losing the citizen submission.
+Models are configurable in the separately deployed API service. If AI is
+unavailable, Beacon preserves the citizen submission with conservative
+manual-review values instead of losing the report.
 
-## Technology
-
-### Frontend
+## Frontend technology
 
 - Next.js 16 App Router, React 19, and TypeScript
 - Tailwind CSS and customized shadcn/Radix primitives
@@ -87,20 +137,10 @@ instead of losing the citizen submission.
 - Cloudinary unsigned uploads
 - jsPDF
 
-### Backend
-
-- Node.js, Express 5, and TypeScript
-- Prisma 7 and PostgreSQL
-- OpenAI text, vision, and embedding APIs
-- JWT authentication and bcrypt
-- Zod validation
-- Nodemailer with generic SMTP
-- Vitest and Supertest
-- Swagger UI
-
 ## Database design
 
-The database relationships and report lifecycle entities are documented in the
+The wider platform’s data relationships and report lifecycle entities are
+documented in the
 [Beacon entity-relationship diagram on DrawSQL](https://drawsql.app/teams/abul-basar/diagrams/beacon).
 
 ## Application routes
@@ -132,22 +172,17 @@ The database relationships and report lifecycle entities are documented in the
 
 - Node.js 20 or later
 - npm
-- PostgreSQL
-- OpenAI API key
 - Public Mapbox token
 - Cloudinary unsigned upload preset
-- Optional SMTP account for confirmation emails
+- Access to a running Beacon API
 
 ### 1. Install dependencies
 
 ```bash
 npm install
-cd backend
-npm install
-cd ..
 ```
 
-### 2. Configure the frontend
+### 2. Configure the application
 
 ```bash
 cp .env.example .env.local
@@ -170,72 +205,13 @@ Only a public `pk.` Mapbox token may be placed in a `NEXT_PUBLIC_` variable.
 Set `APP_URL` to the canonical production origin when deploying so social
 metadata, the sitemap, and structured data use the public domain.
 
-### 3. Configure the backend
-
-```bash
-cp backend/.env.example backend/.env
-```
-
-At minimum, configure:
-
-```env
-DATABASE_URL=postgresql://user:password@localhost:5432/beacon
-PORT=8080
-APP_URL=http://localhost:3000
-PUBLIC_URL=http://localhost:8080
-
-BCRYPT_SALT_ROUNDS=12
-JWT_ACCESS_SECRET=replace_with_a_long_random_secret
-JWT_ACCESS_EXPIRES_IN=1d
-
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4o-mini
-OPENAI_FALLBACK_MODEL=gpt-4o
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-```
-
-For email confirmation, also configure:
-
-```env
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=notifications@example.com
-SMTP_PASS=your_app_password
-SMTP_FROM="Beacon Reports <notifications@example.com>"
-```
-
-For Gmail, use an app password rather than the normal account password.
-
-### 4. Prepare the database
-
-```bash
-cd backend
-npm run prisma:generate
-npx prisma migrate dev
-```
-
-### 5. Start both applications
-
-Backend:
-
-```bash
-cd backend
-npm run dev
-```
-
-Frontend, in another terminal:
+### 3. Start the frontend
 
 ```bash
 npm run dev
 ```
 
-Open:
-
-- Frontend: `http://localhost:3000`
-- Backend: `http://localhost:8080`
-- Swagger: `http://localhost:8080/api/docs`
-- Health check: `http://localhost:8080/api/health`
+Open `http://localhost:3000`.
 
 ## Authentication and API access
 
@@ -294,50 +270,12 @@ Departments: roads_and_highways, electrical, water_and_sewerage,
              waste_management, general
 ```
 
-## Duplicate detection
-
-The default composite score is:
-
-```text
-semantic similarity  0.55
-category match       0.15
-geographic proximity 0.20
-time proximity       0.10
-```
-
-The default threshold is `0.80`, radius is `500 m`, and lookback is `7 days`.
-These values are configurable in `backend/.env`. A match sets
-`duplicateOfId` and `duplicateScore`; it does not delete, reject, merge, or
-automatically synchronize the report.
-
-## Email behavior
-
-Confirmation email is attempted only after the database transaction succeeds.
-It contains the internal report ID, public tracking code, AI summary, and
-tracking link. A delivery failure is logged but does not roll back the report.
-If SMTP is not configured or the contact value is not an email address, the
-email step is skipped.
-
 ## Validation and testing
-
-Frontend:
 
 ```bash
 npm run lint
 npm run build
 ```
-
-Backend:
-
-```bash
-cd backend
-npm run build
-npm test
-```
-
-The current backend suite covers authentication, validation, report creation,
-AI response normalization, image vision input, duplicate detection, tracking,
-email dispatch, middleware, and report operations.
 
 ## Important implementation notes
 
