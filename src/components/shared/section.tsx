@@ -11,10 +11,10 @@ export function Section({
   ...props
 }: React.ComponentProps<"section"> & { containerClassName?: string }) {
   return (
-    <section className={cn("py-20 sm:py-28", className)} {...props}>
+    <section className={cn("py-20 sm:py-28 lg:py-32", className)} {...props}>
       <div
         className={cn(
-          "mx-auto w-full max-w-6xl px-5 sm:px-8",
+          "mx-auto w-full max-w-7xl px-5 sm:px-8 lg:px-10",
           containerClassName,
         )}
       >
@@ -48,11 +48,11 @@ export function SectionHeader({
       )}
     >
       {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
-      <h2 className="font-heading text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+      <h2 className="font-heading text-3xl font-semibold leading-[1.08] tracking-[-0.035em] text-balance sm:text-4xl lg:text-5xl">
         {title}
       </h2>
       {description ? (
-        <p className="text-base leading-relaxed text-muted-foreground text-balance sm:text-lg">
+        <p className="text-base leading-7 text-muted-foreground text-balance sm:text-lg">
           {description}
         </p>
       ) : null}
@@ -68,11 +68,11 @@ export function Eyebrow({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium tracking-wide text-primary uppercase",
+        "inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3.5 py-1.5 text-[10px] font-semibold tracking-[0.16em] text-primary uppercase",
         className,
       )}
     >
-      <span className="size-1.5 rounded-full bg-primary" />
+      <span className="size-1.5 rounded-full bg-current" />
       {children}
     </span>
   );

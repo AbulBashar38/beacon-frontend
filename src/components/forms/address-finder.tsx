@@ -7,11 +7,13 @@ import { cn } from "@/lib/utils";
 import { searchBangladeshAddresses, type AddressResult } from "@/lib/mapbox-geocoding";
 
 export function AddressFinder({
+  id,
   value,
   onValueChange,
   onSelect,
   invalid,
 }: {
+  id?: string;
   value: string;
   onValueChange: (value: string) => void;
   onSelect: (address: AddressResult) => void;
@@ -80,6 +82,7 @@ export function AddressFinder({
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
+          id={id}
           value={value}
           onChange={(event) => {
             const nextValue = event.target.value;

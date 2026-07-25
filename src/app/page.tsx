@@ -11,10 +11,16 @@ import { LandingDataProvider } from "@/contexts/landing-data-context";
 
 export default function LandingPage() {
   return (
-    <>
+    <div className="landing-page flex min-h-screen flex-col overflow-x-clip">
+      <a
+        href="#main-content"
+        className="fixed left-4 top-4 z-[100] -translate-y-24 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-[var(--landing-ink)] shadow-xl transition focus:translate-y-0"
+      >
+        Skip to main content
+      </a>
       <CitizenHeader />
       <LandingDataProvider>
-        <main className="flex-1">
+        <main id="main-content" className="flex-1 bg-[var(--landing-paper)]">
           <Hero />
           <ReportSection />
           <HowItWorks />
@@ -25,6 +31,6 @@ export default function LandingPage() {
         </main>
       </LandingDataProvider>
       <CitizenFooter />
-    </>
+    </div>
   );
 }

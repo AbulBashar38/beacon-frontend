@@ -1,16 +1,24 @@
+import { LockKeyhole } from "lucide-react";
+
 export function AuthHeader({
+  eyebrow = "Secure account access",
   title,
   subtitle,
 }: {
+  eyebrow?: string;
   title: string;
   subtitle: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2">
-      <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
+    <div>
+      <div className="flex items-center gap-2 font-mono text-[9px] font-semibold uppercase tracking-[0.15em] text-primary">
+        <LockKeyhole className="size-3.5" aria-hidden="true" />
+        {eyebrow}
+      </div>
+      <h1 className="mt-3 font-heading text-3xl font-semibold leading-tight tracking-[-0.035em] sm:text-[2rem]">
         {title}
       </h1>
-      <p className="text-sm leading-relaxed text-muted-foreground">
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">
         {subtitle}
       </p>
     </div>

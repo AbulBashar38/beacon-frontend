@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion, AnimatePresence } from "motion/react";
-import { Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Loader2, ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,7 +71,8 @@ export function LoginForm() {
           className="flex flex-col gap-6"
         >
           <AuthHeader
-            title="Welcome back"
+            eyebrow="Account access"
+            title="Welcome back to Beacon"
             subtitle={
               <>
                 New to Beacon?{" "}
@@ -85,7 +86,7 @@ export function LoginForm() {
             }
           />
 
-          <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+          <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
             {serverError ? (
               <FormAlert variant="error">{serverError}</FormAlert>
             ) : null}
@@ -122,10 +123,10 @@ export function LoginForm() {
             </Field>
 
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm text-muted-foreground select-none">
+              <label className="flex min-h-11 items-center gap-2 text-sm text-muted-foreground select-none">
                 <input
                   type="checkbox"
-                  className="size-4 rounded border-input accent-primary"
+                  className="size-[18px] rounded border-input accent-primary"
                   {...register("remember")}
                 />
                 Remember me
@@ -143,7 +144,7 @@ export function LoginForm() {
               size="xl"
               variant="hero"
               disabled={isSubmitting}
-              className="mt-1 w-full"
+              className="mt-1 h-13 w-full bg-[var(--landing-ink)] text-white shadow-[0_18px_40px_-24px_var(--landing-ink)] hover:bg-[var(--landing-ink-soft)]"
             >
               {isSubmitting ? (
                 <>
@@ -157,6 +158,11 @@ export function LoginForm() {
                 </>
               )}
             </Button>
+
+            <p className="flex items-center justify-center gap-2 text-center text-[10px] leading-4 text-muted-foreground">
+              <ShieldCheck className="size-3.5 text-primary" aria-hidden="true" />
+              Your session is protected and routed according to your account role.
+            </p>
           </form>
         </motion.div>
       )}
@@ -167,6 +173,8 @@ export function LoginForm() {
 function AuthSuccess({ destination }: { destination: string }) {
   return (
     <motion.div
+      role="status"
+      aria-live="polite"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       className="flex flex-col items-center gap-5 text-center"
@@ -175,17 +183,17 @@ function AuthSuccess({ destination }: { destination: string }) {
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 18 }}
-        className="flex size-16 items-center justify-center rounded-2xl bg-success/10"
+        className="flex size-16 items-center justify-center rounded-2xl border border-success/15 bg-success/10"
       >
         <CheckCircle2 className="size-8 text-success" />
       </motion.span>
       <div className="space-y-1.5">
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">
+        <h1 className="font-heading text-3xl font-semibold tracking-[-0.035em]">
           You&apos;re signed in
         </h1>
         <p className="text-sm text-muted-foreground">Welcome back to Beacon. Opening your workspace…</p>
       </div>
-      <Button asChild size="xl" variant="hero" className="w-full">
+      <Button asChild size="xl" variant="hero" className="h-13 w-full bg-[var(--landing-ink)] text-white hover:bg-[var(--landing-ink-soft)]">
         <Link href={destination}>
           Continue
           <ArrowRight data-icon="inline-end" />

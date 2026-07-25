@@ -1,144 +1,49 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { motion } from "motion/react";
-import { Loader2, ArrowRight, ArrowLeft, MailCheck } from "lucide-react";
+import { ArrowLeft, MailWarning, ShieldAlert } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Field } from "@/components/forms/field";
 import { AuthHeader } from "@/components/auth/auth-header";
-
-const schema = z.object({
-  email: z.string().min(1, "Enter your email").email("Enter a valid email"),
-});
-
-type FormValues = z.infer<typeof schema>;
+import { Button } from "@/components/ui/button";
 
 export function ForgotPasswordForm() {
-  const {
-    register,
-    handleSubmit,
-    getValues,
-    formState: { errors, isSubmitting },
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    mode: "onTouched",
-    defaultValues: { email: "" },
-  });
-
-  const [sent, setSent] = useState(false);
-
-  const onSubmit = handleSubmit(async () => {
-    await new Promise((r) => setTimeout(r, 900));
-    setSent(true);
-  });
-
-  if (sent) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col items-center gap-5 text-center"
-      >
-        <motion.span
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: "spring", stiffness: 260, damping: 18 }}
-          className="flex size-16 items-center justify-center rounded-2xl bg-primary/10"
-        >
-          <MailCheck className="size-8 text-primary" />
-        </motion.span>
-        <div className="space-y-1.5">
-          <h1 className="font-heading text-2xl font-semibold tracking-tight">
-            Check your inbox
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            If an account exists for{" "}
-            <span className="font-medium text-foreground">
-              {getValues("email")}
-            </span>
-            , we&apos;ve sent a link to reset your password.
-          </p>
-        </div>
-        <div className="flex w-full flex-col gap-2">
-          <Button
-            type="button"
-            size="lg"
-            variant="outline"
-            className="w-full"
-            onClick={() => setSent(false)}
-          >
-            Use a different email
-          </Button>
-          <Button asChild size="lg" variant="ghost" className="w-full">
-            <Link href="/login">Back to sign in</Link>
-          </Button>
-        </div>
-      </motion.div>
-    );
-  }
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col gap-6"
-    >
+    <div className="flex flex-col gap-6">
       <AuthHeader
-        title="Reset your password"
-        subtitle="Enter the email tied to your account and we'll send you a reset link."
+        eyebrow="Account recovery"
+        title="Password recovery"
+        subtitle="Email-based password reset is not connected to the Beacon authentication service yet."
       />
 
-      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
-        <Field
-          label="Email"
-          htmlFor="email"
-          error={errors.email?.message}
-          required
-        >
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            placeholder="you@example.com"
-            aria-invalid={!!errors.email}
-            {...register("email")}
-          />
-        </Field>
-
-        <Button
-          type="submit"
-          size="xl"
-          variant="hero"
-          disabled={isSubmitting}
-          className="w-full"
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="animate-spin" data-icon="inline-start" />
-              Sending link…
-            </>
-          ) : (
-            <>
-              Send reset link
-              <ArrowRight data-icon="inline-end" />
-            </>
-          )}
-        </Button>
-      </form>
-
-      <Link
-        href="/login"
-        className="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      <div
+        role="status"
+        className="rounded-2xl border border-warning/20 bg-warning/[0.07] p-5"
       >
-        <ArrowLeft className="size-4" />
-        Back to sign in
-      </Link>
-    </motion.div>
+        <span className="grid size-11 place-items-center rounded-xl bg-warning/12 text-warning">
+          <MailWarning className="size-5" aria-hidden="true" />
+        </span>
+        <h2 className="mt-4 text-sm font-semibold">Recovery email unavailable</h2>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          No reset message has been sent. Return to sign in and retry your
+          credentials. Administrators should use their organization&apos;s
+          approved account-support process if access cannot be restored.
+        </p>
+      </div>
+
+      <div className="flex items-start gap-2.5 rounded-xl border border-black/7 bg-[var(--landing-paper)] p-3.5 text-xs leading-5 text-muted-foreground">
+        <ShieldAlert className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+        Beacon will only enable this flow when a real, secure reset endpoint is
+        available.
+      </div>
+
+      <Button
+        asChild
+        size="xl"
+        className="h-13 w-full bg-[var(--landing-ink)] text-white hover:bg-[var(--landing-ink-soft)]"
+      >
+        <Link href="/login">
+          <ArrowLeft data-icon="inline-start" />
+          Back to sign in
+        </Link>
+      </Button>
+    </div>
   );
 }

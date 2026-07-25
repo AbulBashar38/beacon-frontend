@@ -222,6 +222,20 @@
   --sidebar-ring: oklch(0.68 0.12 182);
 }
 
+.landing-page {
+  --landing-ink: oklch(0.205 0.035 187);
+  --landing-ink-soft: oklch(0.255 0.04 187);
+  --landing-paper: oklch(0.985 0.012 92);
+  --landing-paper-deep: oklch(0.955 0.018 101);
+  --landing-mist: oklch(0.955 0.018 178);
+  --landing-signal: oklch(0.74 0.145 165);
+  --landing-signal-strong: oklch(0.63 0.135 168);
+  --landing-sun: oklch(0.82 0.14 82);
+  --landing-line: oklch(0.79 0.025 182 / 28%);
+  color: var(--foreground);
+  background: var(--landing-paper);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -257,6 +271,29 @@
       );
     background-size: 44px 44px;
   }
+  .landing-grid {
+    background-image:
+      linear-gradient(to right, oklch(1 0 0 / 6%) 1px, transparent 1px),
+      linear-gradient(to bottom, oklch(1 0 0 / 6%) 1px, transparent 1px);
+    background-size: 52px 52px;
+  }
+  .landing-noise {
+    background-image: radial-gradient(
+      circle at center,
+      oklch(1 0 0 / 8%) 0.7px,
+      transparent 0.8px
+    );
+    background-size: 7px 7px;
+  }
+  .landing-hairline {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--landing-line) 18%,
+      var(--landing-line) 82%,
+      transparent
+    );
+  }
   .text-balance {
     text-wrap: balance;
   }
@@ -264,6 +301,9 @@
     @apply h-10 w-full rounded-lg border border-white/8 bg-slate-950/60 px-3 text-xs text-slate-200 outline-none placeholder:text-slate-600 focus:border-teal-400/40 focus:ring-2 focus:ring-teal-400/10;
   }
   @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
     *,
     *::before,
     *::after {

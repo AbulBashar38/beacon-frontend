@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Map, {
   Layer,
-  NavigationControl,
   Source,
   type LayerProps,
 } from "react-map-gl/mapbox";
@@ -67,6 +66,7 @@ export function BangladeshMapVisual() {
   const [hasMapError, setHasMapError] = useState(false);
   const [reports, setReports] = useState<PublicMapReport[]>([]);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [dataLoading, setDataLoading] = useState(true);
   const accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
   const mapStyle =
     process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? "mapbox://styles/mapbox/dark-v11";
@@ -100,6 +100,9 @@ export function BangladeshMapVisual() {
         })
         .catch((reason) => {
           if (active) setDataError(getApiErrorMessage(reason, "Live report data is unavailable."));
+        })
+        .finally(() => {
+          if (active) setDataLoading(false);
         });
     };
     load();
@@ -113,8 +116,8 @@ export function BangladeshMapVisual() {
   if (!accessToken) {
     return (
       <MapNotice
-        title="Map token required"
-        message="Add NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN to .env.local to load the Bangladesh heatmap."
+        title="National map is temporarily offline"
+        message="The reporting service remains available while the live map reconnects."
       />
     );
   }
@@ -130,8 +133,8 @@ export function BangladeshMapVisual() {
 
   return (
     <div
-      className="relative aspect-[4/5] w-full overflow-hidden rounded-lg bg-slate-950"
-      aria-label="Interactive heatmap of civic issue reports across Bangladesh"
+      className="relative aspect-[5/6] w-full overflow-hidden rounded-xl bg-slate-950 sm:aspect-[4/5]"
+      aria-label="Live heatmap of civic issue reports across Bangladesh"
     >
       {!isLoaded && (
         <div className="absolute inset-0 z-10 grid place-items-center bg-slate-950">
@@ -142,7 +145,11 @@ export function BangladeshMapVisual() {
         </div>
       )}
       <div className="absolute bottom-3 left-3 z-10 rounded-full border border-white/10 bg-slate-950/90 px-3 py-1.5 font-mono text-[10px] text-teal-300 backdrop-blur">
-        {dataError ? "Live data unavailable" : `${reports.length} live mapped reports`}
+        {dataError
+          ? "Live data unavailable"
+          : dataLoading
+            ? "Syncing live reports"
+            : `${reports.length} live mapped reports`}
       </div>
 
       <Map
@@ -159,13 +166,13 @@ export function BangladeshMapVisual() {
           [93.2, 27.1],
         ]}
         mapStyle={mapStyle}
+        interactive={false}
         attributionControl={false}
         reuseMaps
         onLoad={() => setIsLoaded(true)}
         onError={() => setHasMapError(true)}
         style={{ width: "100%", height: "100%" }}
       >
-        <NavigationControl position="top-right" showCompass={false} />
         <Source id="bangladesh-civic-issues" type="geojson" data={mapData}>
           <Layer {...heatmapLayer} />
           <Layer {...hotspotLayer} />
@@ -177,7 +184,7 @@ export function BangladeshMapVisual() {
 
 function MapNotice({ title, message }: { title: string; message: string }) {
   return (
-    <div className="grid aspect-[4/5] w-full place-items-center rounded-lg bg-slate-950 p-8 text-center">
+    <div className="grid aspect-[5/6] w-full place-items-center rounded-xl bg-slate-950 p-8 text-center sm:aspect-[4/5]">
       <div className="max-w-64">
         <AlertTriangle className="mx-auto mb-3 size-6 text-warning" aria-hidden="true" />
         <p className="text-sm font-semibold text-console-foreground">{title}</p>

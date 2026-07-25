@@ -26,6 +26,27 @@ export function Field({
   className,
   children,
 }: FieldProps) {
+  const hintId = htmlFor && hint ? `${htmlFor}-hint` : undefined;
+  const errorId = htmlFor && error ? `${htmlFor}-error` : undefined;
+  const describedChild =
+    htmlFor &&
+    React.isValidElement(children) &&
+    (children.props as { id?: string }).id === htmlFor
+      ? React.cloneElement(
+          children as React.ReactElement<{
+            id?: string;
+            "aria-describedby"?: string;
+            "aria-errormessage"?: string;
+            "aria-required"?: boolean;
+          }>,
+          {
+            "aria-describedby": hintId,
+            "aria-errormessage": errorId,
+            "aria-required": required || undefined,
+          },
+        )
+      : children;
+
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       <div className="flex items-baseline justify-between gap-2">
@@ -41,12 +62,13 @@ export function Field({
           ) : null}
         </label>
         {hint ? (
-          <span className="text-xs text-muted-foreground">{hint}</span>
+          <span id={hintId} className="text-xs text-muted-foreground">{hint}</span>
         ) : null}
       </div>
-      {children}
+      {describedChild}
       {error ? (
         <p
+          id={errorId}
           role="alert"
           className="flex items-center gap-1.5 text-xs font-medium text-danger"
         >

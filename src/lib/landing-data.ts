@@ -18,6 +18,7 @@ export type IssueCategory = {
   label: string;
   description: string;
   icon: LucideIcon;
+  department: string;
   /** semantic accent token used for the icon tile */
   tone: "primary" | "warning" | "info" | "danger" | "success";
 };
@@ -29,6 +30,7 @@ export const issueCategories: IssueCategory[] = [
     description: "Cracked carriageways, sunken patches and broken surfaces.",
     icon: Construction,
     tone: "warning",
+    department: "Roads & highways",
   },
   {
     id: "streetlight",
@@ -36,6 +38,7 @@ export const issueCategories: IssueCategory[] = [
     description: "Dark stretches and faulty poles that reduce night safety.",
     icon: Lightbulb,
     tone: "info",
+    department: "Electrical services",
   },
   {
     id: "water-leak",
@@ -43,6 +46,7 @@ export const issueCategories: IssueCategory[] = [
     description: "Burst mains and supply leaks wasting treated water.",
     icon: Droplets,
     tone: "info",
+    department: "Water authority",
   },
   {
     id: "drainage",
@@ -50,6 +54,7 @@ export const issueCategories: IssueCategory[] = [
     description: "Clogged drains and monsoon flooding on local streets.",
     icon: Waves,
     tone: "primary",
+    department: "Local engineering",
   },
   {
     id: "dumping",
@@ -57,6 +62,7 @@ export const issueCategories: IssueCategory[] = [
     description: "Uncollected waste and unauthorised dumping sites.",
     icon: Trash2,
     tone: "success",
+    department: "Waste management",
   },
   {
     id: "road-hazard",
@@ -64,6 +70,7 @@ export const issueCategories: IssueCategory[] = [
     description: "Open manholes, debris and other public safety risks.",
     icon: AlertTriangle,
     tone: "danger",
+    department: "Safety coordination",
   },
   {
     id: "other",
@@ -71,6 +78,7 @@ export const issueCategories: IssueCategory[] = [
     description: "Any civic infrastructure problem not listed above.",
     icon: CircleHelp,
     tone: "primary",
+    department: "Civic intake team",
   },
 ];
 
@@ -106,7 +114,8 @@ export const howItWorks: HowStep[] = [
 ];
 
 export const navLinks = [
-  { label: "Report", href: "#report" },
+  { label: "Report", href: "#quick-report" },
+  { label: "Track", href: "/track" },
   { label: "How it works", href: "#how-it-works" },
   { label: "Categories", href: "#categories" },
 ];

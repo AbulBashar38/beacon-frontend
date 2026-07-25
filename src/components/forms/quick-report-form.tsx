@@ -190,15 +190,23 @@ export function QuickReportForm() {
   });
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-border bg-surface shadow-[var(--shadow-elevated)]">
-      <div className="border-b border-border bg-surface-muted/50 px-6 py-4 sm:px-8">
+    <div id="quick-report" className="relative scroll-mt-24 overflow-hidden rounded-[1.6rem] border border-black/8 bg-surface shadow-[0_32px_80px_-46px_oklch(0.2_0.03_190/55%)]">
+      <div className="flex flex-col gap-4 border-b border-white/8 bg-[var(--landing-ink)] px-6 py-5 text-white sm:flex-row sm:items-center sm:justify-between sm:px-8">
+        <div>
+          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.17em] text-[var(--landing-signal)]">
+            Civic service request
+          </p>
+          <h3 className="mt-1 font-heading text-lg font-semibold tracking-tight">
+            Create a new public report
+          </h3>
+        </div>
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--landing-signal)]/20 bg-[var(--landing-signal)]/10 px-2.5 py-1 text-xs font-medium text-[var(--landing-signal)]">
             <span className="size-1.5 rounded-full bg-success" />
             No sign-in needed
           </span>
-          <span className="text-xs text-muted-foreground">
-            Takes about a minute
+          <span className="text-xs text-white/42">
+            3 short parts
           </span>
         </div>
       </div>
@@ -229,11 +237,16 @@ export function QuickReportForm() {
             exit={{ opacity: 0 }}
             onSubmit={onSubmit}
             noValidate
-            className="flex flex-col gap-6 p-6 sm:p-8"
+            className="flex flex-col gap-6 p-5 sm:p-8"
           >
             {submitError ? <FormAlert variant="error">{submitError}</FormAlert> : null}
 
             {/* category */}
+            <FormSectionHeading
+              index="01"
+              title="Issue details"
+              description="Tell us what needs attention."
+            />
             <Field
               label="What's the problem?"
               hint="Optional — AI will validate the final category"
@@ -310,6 +323,11 @@ export function QuickReportForm() {
             </Field>
 
             {/* location */}
+            <FormSectionHeading
+              index="02"
+              title="Place"
+              description="Pin the report to the right response area."
+            />
             <Field
               label="Location"
               htmlFor="qr-location"
@@ -319,6 +337,7 @@ export function QuickReportForm() {
               <div className="flex flex-col gap-2 sm:flex-row">
                 <input type="hidden" {...register("location")} />
                 <AddressFinder
+                  id="qr-location"
                   value={location}
                   invalid={Boolean(errors.location || locationError)}
                   onValueChange={(nextLocation) => {
@@ -360,6 +379,11 @@ export function QuickReportForm() {
             </Field>
 
             {/* photo (optional) */}
+            <FormSectionHeading
+              index="03"
+              title="Evidence & contact"
+              description="Optional details can help teams verify and update you."
+            />
             <Field label="Photo" hint="Optional — AI analyzes visible evidence during triage">
               <input
                 ref={fileRef}
@@ -451,7 +475,7 @@ export function QuickReportForm() {
               />
             </Field>
 
-            <div className="flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="sticky bottom-3 z-10 flex flex-col gap-3 rounded-2xl border border-border bg-surface/95 p-3 shadow-[0_14px_35px_-22px_black] backdrop-blur sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-muted-foreground">
                 You’ll get a public tracking code to follow progress.
               </p>
@@ -478,6 +502,28 @@ export function QuickReportForm() {
           </motion.form>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function FormSectionHeading({
+  index,
+  title,
+  description,
+}: {
+  index: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 border-t border-border pt-6 first:border-t-0 first:pt-0">
+      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[var(--landing-ink)] font-mono text-[10px] font-semibold text-[var(--landing-signal)]">
+        {index}
+      </span>
+      <div>
+        <p className="text-sm font-semibold">{title}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+      </div>
     </div>
   );
 }

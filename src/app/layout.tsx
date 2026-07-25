@@ -21,12 +21,35 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.APP_URL ?? "http://localhost:3000"),
   title: {
     default: "Beacon — Civic Infrastructure Intelligence",
     template: "%s · Beacon",
   },
   description:
     "Beacon lets citizens report public infrastructure problems and helps government teams triage, map, and resolve them — an AI-powered civic operations platform.",
+  openGraph: {
+    type: "website",
+    locale: "en_BD",
+    title: "Beacon — Civic Infrastructure Intelligence",
+    description:
+      "Your street sends a signal. The right team gets to work.",
+    images: [
+      {
+        url: "/og.png",
+        width: 1730,
+        height: 909,
+        alt: "Beacon civic signal network",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Beacon — Civic Infrastructure Intelligence",
+    description:
+      "Your street sends a signal. The right team gets to work.",
+    images: ["/og.png"],
+  },
 };
 
 export default function RootLayout({
