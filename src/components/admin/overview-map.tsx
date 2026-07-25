@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Map, { Layer, NavigationControl, Source, type LayerProps, type MapRef } from "react-map-gl/mapbox";
+import Map, { AttributionControl, Layer, NavigationControl, Source, type LayerProps, type MapRef } from "react-map-gl/mapbox";
 import { AlertTriangle, Layers3, LoaderCircle, MapPin } from "lucide-react";
 
-import { createIssueMapData } from "@/lib/admin-map-data";
+import {
+  createIssueMapData,
+  getIssueMapExclusionCounts,
+} from "@/lib/admin-map-data";
 import type { AdminIssue } from "@/lib/admin-issues";
 import { cn } from "@/lib/utils";
 
@@ -49,7 +52,7 @@ export function OverviewMap({ issues }: { issues: AdminIssue[] }) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
   const style = process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? "mapbox://styles/mapbox/dark-v11";
   const mapData = useMemo(() => createIssueMapData(issues), [issues]);
-  const unmappedCount = issues.length - mapData.features.length;
+  const excluded = useMemo(() => getIssueMapExclusionCounts(issues), [issues]);
 
   useEffect(() => {
     if (!loaded || !mapData.features.length) return;
@@ -81,15 +84,19 @@ export function OverviewMap({ issues }: { issues: AdminIssue[] }) {
   return (
     <div className="relative min-h-[420px] overflow-hidden">
       {!loaded && <div className="absolute inset-0 z-20 grid place-items-center bg-slate-950"><span className="flex items-center gap-2 text-xs text-slate-400"><LoaderCircle className="size-4 animate-spin text-teal-300" />Loading operational map</span></div>}
-      {loaded && !mapData.features.length ? <div className="absolute inset-0 z-10 grid place-items-center bg-slate-950/75 p-8 text-center"><p className="max-w-sm text-xs leading-5 text-slate-400">No submitted reports currently contain coordinates. Reports appear here after a citizen selects a map location.</p></div> : null}
-      <div className="absolute left-4 top-4 z-10 flex rounded-lg border border-white/10 bg-slate-950/90 p-1 shadow-lg backdrop-blur">
+      {loaded && !mapData.features.length ? <div className="absolute inset-0 z-10 grid place-items-center bg-slate-950/75 p-8 text-center"><p className="max-w-sm text-xs leading-5 text-slate-400">No submitted reports currently contain usable Bangladesh coordinates. Reports appear here after a citizen selects a valid map location.</p></div> : null}
+      <div aria-label="Overview map display" className="absolute left-4 top-4 z-10 flex rounded-lg border border-white/10 bg-slate-950/90 p-1 shadow-lg backdrop-blur">
         <MapModeButton active={mode === "heat"} onClick={() => setMode("heat")} icon={<Layers3 className="size-3.5" />} label="Heat" />
         <MapModeButton active={mode === "markers"} onClick={() => setMode("markers")} icon={<MapPin className="size-3.5" />} label="Markers" />
       </div>
       <div className="absolute bottom-4 left-4 z-10 rounded-lg border border-white/10 bg-slate-950/90 px-3 py-2 backdrop-blur">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">{mapData.features.length} mapped{unmappedCount ? ` · ${unmappedCount} without coordinates` : ""}</p>
+        <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+          {mapData.features.length} mapped
+          {excluded.missingCoordinates ? ` · ${excluded.missingCoordinates} without coordinates` : ""}
+          {excluded.outsideBangladesh ? ` · ${excluded.outsideBangladesh} outside Bangladesh` : ""}
+        </p>
         <div className="mt-1.5 flex items-center gap-2 text-[10px] text-slate-400">
-          <span>Low</span><span className="h-1.5 w-24 rounded-full bg-gradient-to-r from-cyan-400 via-amber-400 to-red-500" /><span>Critical</span>
+          <span>{mode === "heat" ? "Low density" : "Low"}</span><span className="h-1.5 w-24 rounded-full bg-gradient-to-r from-cyan-400 via-amber-400 to-red-500" /><span>{mode === "heat" ? "High density" : "Critical"}</span>
         </div>
       </div>
       <Map
@@ -105,6 +112,7 @@ export function OverviewMap({ issues }: { issues: AdminIssue[] }) {
         onError={() => setFailed(true)}
         style={{ width: "100%", height: 420 }}
       >
+        <AttributionControl compact position="bottom-right" />
         <NavigationControl position="top-right" showCompass={false} />
         <Source id="dashboard-issues" type="geojson" data={mapData}>
           <Layer
@@ -122,5 +130,5 @@ export function OverviewMap({ issues }: { issues: AdminIssue[] }) {
 }
 
 function MapModeButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
-  return <button type="button" aria-pressed={active} onClick={onClick} className={cn("flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[11px] font-medium transition", active ? "bg-teal-400/15 text-teal-300" : "text-slate-500 hover:text-slate-200")}>{icon}{label}</button>;
+  return <button type="button" aria-pressed={active} onClick={onClick} className={cn("flex h-9 items-center gap-1.5 rounded-md px-2.5 text-[11px] font-medium outline-none transition focus-visible:ring-2 focus-visible:ring-teal-300/60", active ? "bg-teal-400/15 text-teal-300" : "text-slate-500 hover:text-slate-200")}>{icon}{label}</button>;
 }

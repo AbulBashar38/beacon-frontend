@@ -7,16 +7,16 @@ const footerNav = [
   {
     heading: "Citizen services",
     links: [
-      { label: "Report an issue", href: "#quick-report" },
+      { label: "Report an issue", href: "/#quick-report" },
       { label: "Track a report", href: "/track" },
-      { label: "How it works", href: "#how-it-works" },
+      { label: "How it works", href: "/#how-it-works" },
     ],
   },
   {
     heading: "Platform",
     links: [
-      { label: "Issue categories", href: "#categories" },
-      { label: "Public impact", href: "#impact" },
+      { label: "Issue categories", href: "/#categories" },
+      { label: "Public impact", href: "/#impact" },
       { label: "Admin sign in", href: "/login" },
     ],
   },

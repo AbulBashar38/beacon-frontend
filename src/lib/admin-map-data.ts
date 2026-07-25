@@ -36,21 +36,58 @@ const districtCenters: Record<string, [longitude: number, latitude: number]> = {
   Barishal: [90.3535, 22.701],
 };
 
-function isInsideBangladesh([longitude, latitude]: [number, number]) {
+export type IssueMapExclusionCounts = {
+  missingCoordinates: number;
+  outsideBangladesh: number;
+};
+
+export function isInsideBangladesh([longitude, latitude]: [number, number]) {
   return longitude >= 88 && longitude <= 92.7 && latitude >= 20.5 && latitude <= 26.7;
+}
+
+function hasFiniteCoordinates(issue: AdminIssue): issue is AdminIssue & {
+  longitude: number;
+  latitude: number;
+} {
+  return (
+    issue.longitude != null &&
+    issue.latitude != null &&
+    Number.isFinite(issue.longitude) &&
+    Number.isFinite(issue.latitude)
+  );
+}
+
+export function getIssueMapExclusionCounts(
+  issues: AdminIssue[],
+): IssueMapExclusionCounts {
+  return issues.reduce<IssueMapExclusionCounts>(
+    (counts, issue) => {
+      if (!hasFiniteCoordinates(issue)) {
+        counts.missingCoordinates += 1;
+      } else if (!isInsideBangladesh([issue.longitude, issue.latitude])) {
+        counts.outsideBangladesh += 1;
+      }
+      return counts;
+    },
+    { missingCoordinates: 0, outsideBangladesh: 0 },
+  );
 }
 
 export function createIssueMapData(issues: AdminIssue[]): FeatureCollection<Point, MapIssueProperties> {
   return {
     type: "FeatureCollection",
     features: issues
-      .filter((issue) => issue.longitude != null && issue.latitude != null)
+      .filter(
+        (issue): issue is AdminIssue & { longitude: number; latitude: number } =>
+          hasFiniteCoordinates(issue) &&
+          isInsideBangladesh([issue.longitude, issue.latitude]),
+      )
       .map((issue) => {
         return {
           type: "Feature",
           geometry: {
             type: "Point",
-            coordinates: [issue.longitude as number, issue.latitude as number],
+            coordinates: [issue.longitude, issue.latitude],
           },
           properties: {
             ...issue,

@@ -94,14 +94,9 @@ export type ReportStats = {
 };
 
 export type TrackedReport = {
-  reportId: string;
   trackingCode: string;
-  description: string;
-  locationText: string;
-  latitude: number | null;
-  longitude: number | null;
   category: ApiReportCategory;
-  summary: string;
+  summary: string | null;
   severity: {
     level: ApiSeverity | null;
     score: number | null;

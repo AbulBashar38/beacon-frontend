@@ -45,8 +45,8 @@ export function AdminSidebar({
       )}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex border-r border-white/8 bg-slate-950 transition-[width,transform] duration-200",
-          collapsed ? "w-[76px]" : "w-64",
+          "fixed inset-y-0 left-0 z-50 flex w-64 border-r border-white/8 bg-slate-950 transition-[width,transform] duration-200",
+          collapsed ? "lg:w-[76px]" : "lg:w-64",
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
@@ -82,7 +82,7 @@ export function AdminSidebar({
           </div>
           <nav className="mt-2 space-y-1" aria-label="Admin navigation">
             {routes.map((route) => {
-              const active = pathname === route.href;
+              const active = pathname === route.href || pathname.startsWith(`${route.href}/`);
               const Icon = route.icon;
               return (
                 <Link
@@ -90,8 +90,9 @@ export function AdminSidebar({
                   href={route.href}
                   title={collapsed ? route.label : undefined}
                   onClick={onMobileClose}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex h-11 items-center rounded-xl text-sm font-medium transition-colors",
+                    "flex h-11 items-center rounded-xl text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/50",
                     collapsed ? "justify-center px-0" : "gap-3 px-3",
                     active
                       ? "bg-teal-400/12 text-teal-300 ring-1 ring-inset ring-teal-300/10"
@@ -109,20 +110,17 @@ export function AdminSidebar({
             {!collapsed && (
               <div className="mb-3 rounded-xl border border-teal-300/10 bg-teal-400/5 p-3">
                 <div className="flex items-center gap-2 text-xs font-semibold text-teal-300">
-                  <span className="relative flex size-2">
-                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-teal-400 opacity-50" />
-                    <span className="relative size-2 rounded-full bg-teal-400" />
-                  </span>
-                  National grid online
+                  <ShieldCheck className="size-3.5" />
+                  Protected operations
                 </div>
                 <p className="mt-1.5 text-[10px] leading-relaxed text-slate-500">
-                  64 districts · Last sync 40s ago
+                  Administrator workspace · Bangladesh coverage
                 </p>
               </div>
             )}
             <button
               onClick={onCollapse}
-              className="hidden h-10 w-full items-center justify-center rounded-xl text-slate-500 hover:bg-white/5 hover:text-slate-200 lg:flex"
+              className="hidden h-10 w-full items-center justify-center rounded-xl text-slate-500 hover:bg-white/5 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/50 lg:flex"
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               <ChevronLeft

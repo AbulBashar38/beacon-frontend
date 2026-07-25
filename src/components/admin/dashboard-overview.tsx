@@ -26,11 +26,33 @@ const categoryColors = ["#2dd4bf", "#38bdf8", "#fbbf24", "#a78bfa", "#fb7185"];
 export function DashboardOverview() {
   const { user } = useAuth();
   const [downloading, setDownloading] = useState(false);
-  const { reports, error: reportsError, reload: reloadReports } = useReports({ limit: 100, sortBy: "createdAt", sortOrder: "desc" });
-  const { stats, error: statsError, reload: reloadStats } = useReportStats();
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const {
+    reports,
+    loading: reportsLoading,
+    error: reportsError,
+    reload: reloadReports,
+  } = useReports({ limit: 100, sortBy: "createdAt", sortOrder: "desc" });
+  const {
+    stats,
+    loading: statsLoading,
+    error: statsError,
+    reload: reloadStats,
+  } = useReportStats();
+  const reportsInitiallyLoading = reportsLoading && reports.length === 0;
+  const statsInitiallyLoading = statsLoading && !stats;
+  const reportsUnavailable = Boolean(reportsError && reports.length === 0);
+  const statsUnavailable = Boolean(statsError && !stats);
   const criticalIssues = reports.filter((issue) => issue.severity === "Critical" && issue.status !== "Resolved" && issue.status !== "Rejected").slice(0, 3);
   const metrics = dashboardMetrics.map((metric) => {
-    if (!stats) return { ...metric, value: "—" };
+    if (!stats) {
+      return {
+        ...metric,
+        value: "—",
+        change: statsUnavailable ? "Analytics unavailable" : "Loading current data",
+        trend: "neutral" as const,
+      };
+    }
     const values: Record<string, string> = {
       "Total issues": stats.totalReports.toLocaleString(),
       "New issues": stats.pendingReports.toLocaleString(),
@@ -62,13 +84,16 @@ export function DashboardOverview() {
     color: categoryColors[index % categoryColors.length],
   }));
   const recentReports = reports.slice(0, 4);
-  const apiError = reportsError ?? statsError;
+  const staleRefreshError =
+    (reports.length > 0 ? reportsError : null) ??
+    (stats ? statsError : null);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
   async function downloadOverviewReport() {
     if (!stats) return;
     setDownloading(true);
+    setDownloadError(null);
     try {
       const { jsPDF } = await import("jspdf");
       const pdf = new jsPDF({ unit: "mm", format: "a4" });
@@ -126,6 +151,8 @@ export function DashboardOverview() {
 
       const date = new Date().toISOString().slice(0, 10);
       pdf.save(`beacon-overview-${date}.pdf`);
+    } catch {
+      setDownloadError("We couldn’t create the overview PDF. Please try again.");
     } finally {
       setDownloading(false);
     }
@@ -151,57 +178,134 @@ export function DashboardOverview() {
           </div>
         </div>
 
-        {apiError && <div role="alert" className="mt-5 flex items-center gap-3 rounded-xl border border-red-300/15 bg-red-400/[0.06] px-4 py-3 text-xs text-red-300"><span className="flex-1">{apiError}</span><Button size="sm" variant="ghost" className="hover:bg-red-400/10" onClick={() => { void reloadReports(); void reloadStats(); }}><RefreshCw /> Retry</Button></div>}
+        {downloadError && (
+          <div role="alert" className="mt-5 flex items-center gap-3 rounded-xl border border-red-300/15 bg-red-400/[0.06] px-4 py-3 text-xs text-red-300">
+            <span className="flex-1">{downloadError}</span>
+            <Button size="sm" variant="ghost" className="hover:bg-red-400/10" disabled={downloading || !stats} onClick={() => void downloadOverviewReport()}>
+              <RefreshCw />
+              Try again
+            </Button>
+          </div>
+        )}
+
+        {staleRefreshError && (
+          <div role="status" className="mt-5 flex items-center gap-3 rounded-xl border border-amber-300/15 bg-amber-400/[0.06] px-4 py-3 text-xs text-amber-200">
+            <span className="flex-1">The latest refresh failed. Previously loaded dashboard data remains visible.</span>
+            <Button size="sm" variant="ghost" className="hover:bg-amber-400/10" onClick={() => { void reloadReports(); void reloadStats(); }}>
+              <RefreshCw />
+              Refresh
+            </Button>
+          </div>
+        )}
 
         <section className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7" aria-label="Key metrics">
-          {metrics.map((metric) => <MetricCard key={metric.label} metric={metric} />)}
+          {metrics.map((metric) => (
+            <MetricCard
+              key={metric.label}
+              metric={metric}
+              loading={statsInitiallyLoading}
+              unavailable={statsUnavailable}
+            />
+          ))}
         </section>
 
         <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,.7fr)]">
-          <DashboardPanel title="Bangladesh issue intelligence" eyebrow="Live geospatial view" action={<Link href="/admin/map" className="flex items-center gap-1 text-[11px] font-medium text-teal-300 hover:text-teal-200">Open full map <ArrowRight className="size-3" /></Link>}>
-            <OverviewMap issues={reports} />
+          <DashboardPanel title="Bangladesh issue intelligence" eyebrow="Mapped issue coverage" action={<Link href="/admin/map" className="flex items-center gap-1 text-[11px] font-medium text-teal-300 hover:text-teal-200">Open full map <ArrowRight className="size-3" /></Link>}>
+            {reportsInitiallyLoading ? (
+              <PanelDataState className="min-h-[420px]" loading label="Loading mapped reports" />
+            ) : reportsUnavailable ? (
+              <PanelDataState
+                className="min-h-[420px]"
+                label="Map data unavailable"
+                message={reportsError ?? undefined}
+                onRetry={() => void reloadReports()}
+              />
+            ) : (
+              <OverviewMap issues={reports} />
+            )}
           </DashboardPanel>
 
-          <DashboardPanel title="Critical issue queue" eyebrow="Needs immediate action" action={<span className="rounded-md bg-red-400/10 px-2 py-1 font-mono text-[10px] text-red-300">{criticalIssues.length} shown</span>}>
-            <div className="divide-y divide-white/7">
-              {criticalIssues.map((issue) => (
-                <Link key={issue.id} href={`/admin/issues/${issue.id}`} className="group block p-4 transition hover:bg-white/[0.025]">
-                  <div className="flex items-start gap-3">
-                    <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-red-400/10 text-red-300"><ShieldAlert className="size-4" /></span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2"><span className="font-mono text-[9px] uppercase tracking-wide text-slate-600">{issue.trackingCode ?? issue.id.slice(0, 8)}</span><span className="text-[10px] text-slate-600">{issue.lastUpdated}</span></div>
-                      <p className="mt-1 text-xs font-medium leading-relaxed text-slate-200 group-hover:text-white">{issue.title}</p>
-                      <p className="mt-1 text-[10px] text-slate-500">{issue.location}</p>
-                    </div>
-                    <ChevronRight className="mt-6 size-4 text-slate-700 transition group-hover:translate-x-0.5 group-hover:text-teal-300" />
-                  </div>
-                </Link>
-              ))}
-              {!criticalIssues.length && <div className="px-5 py-12 text-center"><p className="text-xs font-medium text-slate-300">No critical issues</p><p className="mt-1 text-[10px] text-slate-600">The live API has no open critical reports.</p></div>}
-            </div>
-            <div className="border-t border-white/7 p-3"><Button variant="ghost" className="w-full text-xs text-slate-400 hover:bg-white/5 hover:text-white" asChild><Link href="/admin/issues">View priority queue <ArrowRight /></Link></Button></div>
+          <DashboardPanel
+            title="Critical issue queue"
+            eyebrow="Needs immediate action"
+            action={
+              <span className="rounded-md bg-red-400/10 px-2 py-1 font-mono text-[10px] text-red-300">
+                {reportsInitiallyLoading ? "Checking…" : reportsUnavailable ? "Unavailable" : `${criticalIssues.length} recent`}
+              </span>
+            }
+          >
+            {reportsInitiallyLoading ? (
+              <PanelDataState loading label="Checking the critical queue" />
+            ) : reportsUnavailable ? (
+              <PanelDataState
+                label="Critical queue unavailable"
+                message={reportsError ?? undefined}
+                onRetry={() => void reloadReports()}
+              />
+            ) : (
+              <>
+                <div className="divide-y divide-white/7">
+                  {criticalIssues.map((issue) => (
+                    <Link key={issue.id} href={`/admin/issues/${issue.id}`} className="group block p-4 transition hover:bg-white/[0.025]">
+                      <div className="flex items-start gap-3">
+                        <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-red-400/10 text-red-300"><ShieldAlert className="size-4" /></span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2"><span className="font-mono text-[9px] uppercase tracking-wide text-slate-600">{issue.trackingCode ?? issue.id.slice(0, 8)}</span><span className="text-[10px] text-slate-600">{issue.lastUpdated}</span></div>
+                          <p className="mt-1 text-xs font-medium leading-relaxed text-slate-200 group-hover:text-white">{issue.title}</p>
+                          <p className="mt-1 text-[10px] text-slate-500">{issue.location}</p>
+                        </div>
+                        <ChevronRight className="mt-6 size-4 text-slate-700 transition group-hover:translate-x-0.5 group-hover:text-teal-300" />
+                      </div>
+                    </Link>
+                  ))}
+                  {!criticalIssues.length && <div className="px-5 py-12 text-center"><p className="text-xs font-medium text-slate-300">No critical issues</p><p className="mt-1 text-[10px] text-slate-600">No open critical reports were returned.</p></div>}
+                </div>
+                <div className="border-t border-white/7 p-3"><Button variant="ghost" className="w-full text-xs text-slate-400 hover:bg-white/5 hover:text-white" asChild><Link href="/admin/issues">View priority queue <ArrowRight /></Link></Button></div>
+              </>
+            )}
           </DashboardPanel>
         </div>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <DashboardPanel title="Resolution performance" eyebrow="Last 7 days" action={<ChartLegend />}>
-            <ResolutionChart data={resolutionData} />
+            <ResolutionChart
+              data={resolutionData}
+              loading={statsInitiallyLoading}
+              error={statsUnavailable ? statsError : null}
+              onRetry={() => void reloadStats()}
+            />
           </DashboardPanel>
           <DashboardPanel title="Issue categories" eyebrow="Distribution">
-            <CategoryChart data={categoryData} />
+            <CategoryChart
+              data={categoryData}
+              loading={statsInitiallyLoading}
+              error={statsUnavailable ? statsError : null}
+              onRetry={() => void reloadStats()}
+            />
           </DashboardPanel>
         </div>
 
         <DashboardPanel title="Recent report activity" eyebrow="Latest API records" className="mt-4">
-          <div className="grid divide-y divide-white/7 md:grid-cols-2 md:divide-x md:divide-y-0 xl:grid-cols-4">
-            {recentReports.map((issue) => (
-              <Link href={`/admin/issues/${issue.id}`} key={issue.id} className="flex gap-3 p-4 transition hover:bg-white/[0.025]">
-                <span className="mt-1 size-2 shrink-0 rounded-full bg-teal-400" />
-                <div className="min-w-0"><p className="truncate text-xs font-medium text-slate-200">{issue.title}</p><p className="mt-1 font-mono text-[10px] text-slate-600">{issue.trackingCode ?? issue.id.slice(0, 8)} · {issue.status}</p></div>
-              </Link>
-            ))}
-            {!recentReports.length ? <p className="p-6 text-xs text-slate-500">No reports are available yet.</p> : null}
-          </div>
+          {reportsInitiallyLoading ? (
+            <PanelDataState className="min-h-28" loading label="Loading recent report activity" />
+          ) : reportsUnavailable ? (
+            <PanelDataState
+              className="min-h-28"
+              label="Recent activity unavailable"
+              message={reportsError ?? undefined}
+              onRetry={() => void reloadReports()}
+            />
+          ) : (
+            <div className="grid divide-y divide-white/7 md:grid-cols-2 md:divide-x md:divide-y-0 xl:grid-cols-4">
+              {recentReports.map((issue) => (
+                <Link href={`/admin/issues/${issue.id}`} key={issue.id} className="flex gap-3 p-4 transition hover:bg-white/[0.025]">
+                  <span className="mt-1 size-2 shrink-0 rounded-full bg-teal-400" />
+                  <div className="min-w-0"><p className="truncate text-xs font-medium text-slate-200">{issue.title}</p><p className="mt-1 font-mono text-[10px] text-slate-600">{issue.trackingCode ?? issue.id.slice(0, 8)} · {issue.status}</p></div>
+                </Link>
+              ))}
+              {!recentReports.length ? <p className="p-6 text-xs text-slate-500">No reports are available yet.</p> : null}
+            </div>
+          )}
         </DashboardPanel>
       </div>
     </main>
@@ -210,4 +314,42 @@ export function DashboardOverview() {
 
 function ChartLegend() {
   return <div className="flex items-center gap-3 text-[9px] text-slate-500"><span className="flex items-center gap-1"><span className="size-1.5 rounded-full bg-slate-500" />Opened</span><span className="flex items-center gap-1"><span className="size-1.5 rounded-full bg-teal-400" />Resolved</span></div>;
+}
+
+function PanelDataState({
+  loading = false,
+  label,
+  message,
+  onRetry,
+  className = "min-h-60",
+}: {
+  loading?: boolean;
+  label: string;
+  message?: string;
+  onRetry?: () => void;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`grid place-items-center px-6 py-10 text-center ${className}`}
+      role={loading ? "status" : "alert"}
+      aria-live="polite"
+    >
+      <div className="max-w-sm">
+        {loading ? (
+          <Loader2 className="mx-auto size-5 animate-spin text-teal-300" aria-hidden="true" />
+        ) : (
+          <ShieldAlert className="mx-auto size-5 text-red-300" aria-hidden="true" />
+        )}
+        <p className="mt-3 text-xs font-semibold text-slate-200">{label}</p>
+        {!loading && message ? <p className="mt-1 text-[10px] leading-4 text-slate-500">{message}</p> : null}
+        {!loading && onRetry ? (
+          <Button size="sm" variant="ghost" className="mt-3 text-slate-400 hover:bg-white/5 hover:text-white" onClick={onRetry}>
+            <RefreshCw />
+            Retry
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
 }

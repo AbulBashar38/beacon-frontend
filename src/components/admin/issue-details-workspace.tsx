@@ -4,51 +4,73 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
+  Building2,
+  Eye,
   ExternalLink,
   FileImage,
   Loader2,
+  LockKeyhole,
   MapPin,
   RefreshCw,
   Save,
   ShieldAlert,
 } from "lucide-react";
 
+import { SeverityBadge, StatusBadge } from "@/components/shared/issue-badges";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { getApiErrorMessage } from "@/lib/api/client";
+import type { IssueSeverity, IssueStatus } from "@/lib/admin-issues";
 import {
   reportApi,
   type ApiDepartment,
   type ApiReportDetails,
+  type ApiSeverity,
   type ApiReportStatus,
 } from "@/lib/api/report-api";
 
 const statuses: ApiReportStatus[] = ["pending", "under_review", "assigned", "in_progress", "resolved", "rejected"];
 const departments: ApiDepartment[] = ["roads_and_highways", "electrical", "water_and_sewerage", "waste_management", "general"];
+const statusBadges: Record<ApiReportStatus, IssueStatus> = {
+  pending: "New",
+  under_review: "Under review",
+  assigned: "Assigned",
+  in_progress: "In progress",
+  resolved: "Resolved",
+  rejected: "Rejected",
+};
+const severityBadges: Record<ApiSeverity, IssueSeverity> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  critical: "Critical",
+};
 const label = (value: string | null) => value ? value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()) : "Unassigned";
 
 export function IssueDetailsWorkspace({ id }: { id: string }) {
   const [report, setReport] = useState<ApiReportDetails | null>(null);
   const [status, setStatus] = useState<ApiReportStatus>("pending");
-  const [department, setDepartment] = useState<ApiDepartment>("general");
+  const [department, setDepartment] = useState<ApiDepartment | "">("");
   const [note, setNote] = useState("");
+  const [visibility, setVisibility] = useState<"public" | "internal">("public");
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  async function load() {
-    setLoading(true);
+  async function load(showLoading = true) {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
       const result = await reportApi.getById(id);
       setReport(result);
       setStatus(result.status);
-      setDepartment(result.assignedDepartment ?? "general");
+      setDepartment(result.assignedDepartment ?? "");
     } catch (reason) {
       setError(getApiErrorMessage(reason, "Unable to load this issue."));
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }
 
@@ -57,40 +79,55 @@ export function IssueDetailsWorkspace({ id }: { id: string }) {
       .then((result) => {
         setReport(result);
         setStatus(result.status);
-        setDepartment(result.assignedDepartment ?? "general");
+        setDepartment(result.assignedDepartment ?? "");
       })
       .catch((reason) => setError(getApiErrorMessage(reason, "Unable to load this issue.")))
       .finally(() => setLoading(false));
   }, [id]);
 
-  async function saveChanges() {
-    if (!report) return;
-    setSaving(true);
+  async function assignDepartment() {
+    if (!report || !department || department === report.assignedDepartment) return;
+    setAssigning(true);
     setError(null);
     setMessage(null);
     try {
-      let updated = report;
-      if (department !== report.assignedDepartment) {
-        updated = await reportApi.assignDepartment(report.id, {
-          assignedDepartment: department,
-          note: note || undefined,
-        });
-      }
-      if (status !== updated.status) {
-        updated = await reportApi.updateStatus(report.id, {
-          status,
-          note: note || undefined,
-          visibility: "public",
-        });
-      }
-      setReport(updated);
-      setNote("");
-      setMessage("Issue updated successfully.");
-      await load();
+      await reportApi.assignDepartment(report.id, {
+        assignedDepartment: department,
+      });
+      await load(false);
+      setMessage(`Issue assigned to ${label(department)}.`);
     } catch (reason) {
-      setError(getApiErrorMessage(reason, "Unable to update this issue."));
+      setError(getApiErrorMessage(reason, "Unable to assign this issue."));
     } finally {
-      setSaving(false);
+      setAssigning(false);
+    }
+  }
+
+  async function publishProgressUpdate() {
+    if (!report) return;
+    const trimmedNote = note.trim();
+    if (status === report.status && !trimmedNote) return;
+
+    setPublishing(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await reportApi.updateStatus(report.id, {
+        status,
+        note: trimmedNote || undefined,
+        visibility,
+      });
+      setNote("");
+      await load(false);
+      setMessage(
+        visibility === "public"
+          ? "Public progress update published."
+          : "Internal progress update saved.",
+      );
+    } catch (reason) {
+      setError(getApiErrorMessage(reason, "Unable to publish this progress update."));
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -102,6 +139,9 @@ export function IssueDetailsWorkspace({ id }: { id: string }) {
   const coordinateText = report.latitude != null && report.longitude != null
     ? `${report.latitude.toFixed(6)}, ${report.longitude.toFixed(6)}`
     : "Not provided";
+  const departmentChanged = Boolean(department) && department !== report.assignedDepartment;
+  const progressChanged = status !== report.status || note.trim().length > 0;
+  const actionBusy = assigning || publishing;
 
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-8">
@@ -112,8 +152,10 @@ export function IssueDetailsWorkspace({ id }: { id: string }) {
           <h1 className="mt-2 font-heading text-3xl font-bold">{report.summary ?? report.description.split("\n")[0]}</h1>
           <p className="mt-2 flex items-center gap-2 text-sm text-slate-400"><MapPin className="size-4" />{report.locationText}</p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Pill>{label(report.status)}</Pill>
-            <Pill>{label(report.severityLevel)}</Pill>
+            <StatusBadge status={statusBadges[report.status]} />
+            {report.severityLevel
+              ? <SeverityBadge severity={severityBadges[report.severityLevel]} />
+              : <Pill>Severity pending</Pill>}
             <Pill>{label(report.assignedDepartment)}</Pill>
           </div>
         </header>
@@ -229,12 +271,116 @@ export function IssueDetailsWorkspace({ id }: { id: string }) {
             </DetailSection>
           </section>
 
-          <aside className="h-fit rounded-2xl border border-white/8 bg-slate-900/80 p-5 lg:sticky lg:top-20">
-            <h2 className="font-heading text-lg font-semibold">Operational action</h2>
-            <label className="mt-5 block text-xs text-slate-400">Department<select value={department} onChange={(event) => setDepartment(event.target.value as ApiDepartment)} className="mt-2 h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 text-sm">{departments.map((value) => <option key={value} value={value}>{label(value)}</option>)}</select></label>
-            <label className="mt-4 block text-xs text-slate-400">Status<select value={status} onChange={(event) => setStatus(event.target.value as ApiReportStatus)} className="mt-2 h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 text-sm">{statuses.map((value) => <option key={value} value={value}>{label(value)}</option>)}</select></label>
-            <label className="mt-4 block text-xs text-slate-400">Public progress note<Textarea value={note} onChange={(event) => setNote(event.target.value)} rows={4} className="mt-2 border-white/10 bg-slate-950" placeholder="Explain the latest action to the citizen" /></label>
-            <Button className="mt-5 w-full bg-teal-400 text-slate-950 hover:bg-teal-300" disabled={saving} onClick={saveChanges}>{saving ? <Loader2 className="animate-spin" /> : <Save />}Save update</Button>
+          <aside className="order-first h-fit rounded-2xl border border-white/8 bg-slate-900/80 p-5 lg:order-none lg:sticky lg:top-20">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-teal-400">Case controls</p>
+              <h2 className="mt-1 font-heading text-lg font-semibold">Operational action</h2>
+              <p className="mt-1 text-xs leading-5 text-slate-500">Assignment and progress are recorded separately so every change has a clear audit trail.</p>
+            </div>
+
+            <section className="mt-5 rounded-xl border border-white/7 bg-black/10 p-4">
+              <div className="flex items-center gap-2">
+                <span className="grid size-8 place-items-center rounded-lg bg-cyan-400/10 text-cyan-300"><Building2 className="size-4" /></span>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-100">Department assignment</h3>
+                  <p className="text-[10px] text-slate-500">Creates a public assignment update.</p>
+                </div>
+              </div>
+              <label className="mt-4 block text-xs text-slate-400">
+                Responsible department
+                <select
+                  value={department}
+                  onChange={(event) => setDepartment(event.target.value as ApiDepartment | "")}
+                  disabled={actionBusy}
+                  className="mt-2 h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 text-sm outline-none focus:border-teal-400/40 focus:ring-2 focus:ring-teal-400/10 disabled:opacity-50"
+                >
+                  <option value="" disabled>Choose a department</option>
+                  {departments.map((value) => <option key={value} value={value}>{label(value)}</option>)}
+                </select>
+              </label>
+              <Button
+                variant="outline"
+                className="mt-3 w-full border-white/10 bg-white/[0.035] text-slate-200 hover:bg-white/[0.07] hover:text-white"
+                disabled={actionBusy || !departmentChanged}
+                onClick={assignDepartment}
+              >
+                {assigning ? <Loader2 className="animate-spin" /> : <Building2 />}
+                {report.assignedDepartment ? "Update assignment" : "Assign department"}
+              </Button>
+            </section>
+
+            <section className="mt-3 rounded-xl border border-white/7 bg-black/10 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-100">Progress update</h3>
+                  <p className="mt-0.5 text-[10px] text-slate-500">Change status, leave a note, or do both.</p>
+                </div>
+                <StatusBadge status={statusBadges[status]} />
+              </div>
+
+              <label className="mt-4 block text-xs text-slate-400">
+                Status
+                <select
+                  value={status}
+                  onChange={(event) => setStatus(event.target.value as ApiReportStatus)}
+                  disabled={actionBusy}
+                  className="mt-2 h-11 w-full rounded-lg border border-white/10 bg-slate-950 px-3 text-sm outline-none focus:border-teal-400/40 focus:ring-2 focus:ring-teal-400/10 disabled:opacity-50"
+                >
+                  {statuses.map((value) => <option key={value} value={value}>{label(value)}</option>)}
+                </select>
+              </label>
+
+              <fieldset className="mt-4">
+                <legend className="text-xs text-slate-400">Note visibility</legend>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <VisibilityButton
+                    active={visibility === "public"}
+                    icon={<Eye className="size-3.5" />}
+                    label="Public"
+                    onClick={() => setVisibility("public")}
+                    disabled={actionBusy}
+                  />
+                  <VisibilityButton
+                    active={visibility === "internal"}
+                    icon={<LockKeyhole className="size-3.5" />}
+                    label="Internal"
+                    onClick={() => setVisibility("internal")}
+                    disabled={actionBusy}
+                  />
+                </div>
+                <p className="mt-2 text-[10px] leading-4 text-slate-500">
+                  {visibility === "public"
+                    ? "The note will appear on the citizen tracking page."
+                    : "Only administrators can read the note. The current status remains visible to citizens."}
+                </p>
+              </fieldset>
+
+              <label className="mt-4 block text-xs text-slate-400">
+                {visibility === "public" ? "Citizen progress note" : "Internal operational note"}
+                <Textarea
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  maxLength={1000}
+                  rows={4}
+                  disabled={actionBusy}
+                  className="mt-2 border-white/10 bg-slate-950"
+                  placeholder={visibility === "public" ? "Explain the latest action to the citizen" : "Add context for government operators"}
+                />
+              </label>
+              <div className="mt-1 flex items-center justify-between gap-3 text-[10px] text-slate-600">
+                <span>{note.trim() ? "A note can be published without changing status." : "Optional unless no status is changed."}</span>
+                <span className="shrink-0 font-mono">{note.length}/1000</span>
+              </div>
+
+              <Button
+                className="mt-4 w-full bg-teal-400 text-slate-950 hover:bg-teal-300"
+                disabled={actionBusy || !progressChanged}
+                onClick={publishProgressUpdate}
+              >
+                {publishing ? <Loader2 className="animate-spin" /> : visibility === "public" ? <Eye /> : <Save />}
+                {visibility === "public" ? "Publish update" : "Save internal update"}
+              </Button>
+            </section>
           </aside>
         </div>
       </div>
@@ -260,6 +406,37 @@ function EmptyValue({ children }: { children: React.ReactNode }) {
 
 function Pill({ children }: { children: React.ReactNode }) {
   return <span className="rounded-lg border border-white/8 bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium text-slate-300">{children}</span>;
+}
+
+function VisibilityButton({
+  active,
+  icon,
+  label: buttonLabel,
+  onClick,
+  disabled,
+}: {
+  active: boolean;
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      disabled={disabled}
+      onClick={onClick}
+      className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg border text-xs font-medium outline-none transition focus-visible:ring-2 focus-visible:ring-teal-400/40 disabled:opacity-50 ${
+        active
+          ? "border-teal-300/25 bg-teal-400/10 text-teal-300"
+          : "border-white/8 bg-slate-950/70 text-slate-500 hover:border-white/15 hover:text-slate-300"
+      }`}
+    >
+      {icon}
+      {buttonLabel}
+    </button>
+  );
 }
 
 function ReportLink({ report }: { report: { id: string; trackingCode: string; summary: string | null; status: ApiReportStatus } }) {

@@ -3,13 +3,14 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  ArrowUpRight,
   ArrowDown,
   ArrowUp,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Download,
-  Filter,
-  MoreHorizontal,
+  Plus,
   Search,
   X,
   RefreshCw,
@@ -55,10 +56,14 @@ export function IssuesWorkspace() {
     sortOrder: sortDesc ? "desc" : "asc",
   }), [category, deferredSearch, page, severity, sortDesc, sortKey, status]);
   const { reports, meta, loading, error, reload } = useReports(query);
-  const pageCount = meta.totalPages;
+  const pageCount = Math.max(meta.totalPages, 1);
   const currentPage = meta.page;
   const visible = reports;
-  const activeFilters = [status !== "All statuses" ? status : null, severity !== "All severities" ? severity : null, category !== "All categories" ? category : null].filter(Boolean);
+  const activeFilters = [
+    ...(status !== "All statuses" ? [{ key: "status", label: status, clear: () => { setStatus("All statuses"); setPage(1); setSelected([]); } }] : []),
+    ...(severity !== "All severities" ? [{ key: "severity", label: severity, clear: () => { setSeverity("All severities"); setPage(1); setSelected([]); } }] : []),
+    ...(category !== "All categories" ? [{ key: "category", label: category, clear: () => { setCategory("All categories"); setPage(1); setSelected([]); } }] : []),
+  ];
   const allVisibleSelected = visible.length > 0 && visible.every((issue) => selected.includes(issue.id));
 
   function toggleSort(next: SortKey) {
@@ -107,11 +112,11 @@ export function IssuesWorkspace() {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" className="border-white/10 bg-white/[0.035] text-slate-300 hover:bg-white/[0.06] hover:text-white" disabled={!selected.length} onClick={exportSelected}><Download /> Export {selected.length ? `(${selected.length})` : ""}</Button>
-            <Button asChild className="bg-teal-400 text-slate-950 hover:bg-teal-300"><Link href="/#report"><Filter /> Create report</Link></Button>
+            <Button asChild className="bg-teal-400 text-slate-950 hover:bg-teal-300"><Link href="/#report"><Plus /> New citizen report</Link></Button>
           </div>
         </div>
 
-        <section className="mt-6 overflow-hidden rounded-2xl border border-white/8 bg-slate-900/75 shadow-2xl shadow-black/10">
+        <section className="mt-6 overflow-hidden rounded-2xl border border-white/8 bg-slate-900/75 shadow-2xl shadow-black/10" aria-busy={loading}>
           {error && <div role="alert" className="flex items-center gap-3 border-b border-red-300/10 bg-red-400/[0.06] px-4 py-3 text-xs text-red-300"><span className="flex-1">{error}</span><Button size="sm" variant="ghost" className="hover:bg-red-400/10" onClick={() => void reload()}><RefreshCw /> Retry</Button></div>}
           {loading && <div className="h-0.5 overflow-hidden bg-white/5"><div className="h-full w-1/3 animate-pulse rounded-full bg-teal-400" /></div>}
           <div className="border-b border-white/7 p-4">
@@ -131,8 +136,8 @@ export function IssuesWorkspace() {
             {(activeFilters.length > 0 || search) && (
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span className="text-[10px] font-medium uppercase tracking-wide text-slate-600">Active filters</span>
-                {activeFilters.map((filter) => <span key={filter} className="inline-flex h-7 items-center gap-1.5 rounded-md border border-teal-300/10 bg-teal-400/8 px-2 text-[10px] font-medium text-teal-300">{filter}</span>)}
-                {search && <span className="inline-flex h-7 items-center rounded-md border border-white/8 bg-white/[0.035] px-2 text-[10px] text-slate-400">Search: “{search}”</span>}
+                {activeFilters.map((filter) => <button type="button" onClick={filter.clear} key={filter.key} className="inline-flex h-7 items-center gap-1.5 rounded-md border border-teal-300/10 bg-teal-400/8 px-2 text-[10px] font-medium text-teal-300 transition hover:bg-teal-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/40">{filter.label}<X className="size-3" aria-hidden="true" /><span className="sr-only">Remove {filter.label} filter</span></button>)}
+                {search && <button type="button" onClick={() => { setSearch(""); setPage(1); setSelected([]); }} className="inline-flex h-7 items-center gap-1.5 rounded-md border border-white/8 bg-white/[0.035] px-2 text-[10px] text-slate-400 transition hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/40">Search: “{search}”<X className="size-3" aria-hidden="true" /><span className="sr-only">Clear search</span></button>}
                 <button onClick={clearFilters} className="ml-1 inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-white"><X className="size-3" /> Clear all</button>
               </div>
             )}
@@ -163,13 +168,13 @@ export function IssuesWorkspace() {
                 </tr>
               </thead>
               <tbody className="relative z-0 divide-y divide-white/6">
-                {visible.map((issue) => <IssueRow key={issue.id} issue={issue} selected={selected.includes(issue.id)} onSelect={() => setSelected((items) => items.includes(issue.id) ? items.filter((id) => id !== issue.id) : [...items, issue.id])} />)}
+                {loading && !visible.length ? <IssueRowSkeleton /> : visible.map((issue) => <IssueRow key={issue.id} issue={issue} selected={selected.includes(issue.id)} onSelect={() => setSelected((items) => items.includes(issue.id) ? items.filter((id) => id !== issue.id) : [...items, issue.id])} />)}
               </tbody>
             </table>
           </div>
 
           <div className="divide-y divide-white/7 lg:hidden">
-            {visible.map((issue) => <IssueMobileCard key={issue.id} issue={issue} selected={selected.includes(issue.id)} onSelect={() => setSelected((items) => items.includes(issue.id) ? items.filter((id) => id !== issue.id) : [...items, issue.id])} />)}
+            {loading && !visible.length ? Array.from({ length: 5 }).map((_, index) => <div key={index} className="animate-pulse p-4"><div className="h-3 w-24 rounded bg-white/5" /><div className="mt-3 h-4 w-3/4 rounded bg-white/5" /><div className="mt-3 h-3 w-1/2 rounded bg-white/[0.035]" /></div>) : visible.map((issue) => <IssueMobileCard key={issue.id} issue={issue} selected={selected.includes(issue.id)} onSelect={() => setSelected((items) => items.includes(issue.id) ? items.filter((id) => id !== issue.id) : [...items, issue.id])} />)}
           </div>
 
           {!loading && !visible.length && <div className="px-6 py-20 text-center"><Search className="mx-auto size-7 text-slate-700" /><h2 className="mt-3 text-sm font-semibold text-slate-300">No issues found</h2><p className="mt-1 text-xs text-slate-600">{error ? "Reconnect to the API and try again." : "Try adjusting your search or clearing the active filters."}</p><Button variant="outline" size="sm" className="mt-4 border-white/10 bg-white/[0.035] text-slate-300" onClick={error ? () => void reload() : clearFilters}>{error ? "Retry connection" : "Clear filters"}</Button></div>}
@@ -177,9 +182,9 @@ export function IssuesWorkspace() {
           <footer className="flex flex-col gap-3 border-t border-white/7 px-4 py-3 text-[11px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
             <p>Showing {visible.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0}–{Math.min(currentPage * PAGE_SIZE, meta.total)} of {meta.total} issues</p>
             <div className="flex items-center gap-2">
-              <button disabled={currentPage === 1} onClick={() => { setPage((value) => Math.max(1, value - 1)); setSelected([]); }} className="grid size-8 place-items-center rounded-lg border border-white/8 text-slate-400 disabled:opacity-30 hover:not-disabled:bg-white/5" aria-label="Previous page"><ChevronLeft className="size-4" /></button>
+              <button disabled={currentPage === 1 || loading} onClick={() => { setPage((value) => Math.max(1, value - 1)); setSelected([]); }} className="grid size-9 place-items-center rounded-lg border border-white/8 text-slate-400 disabled:opacity-30 hover:not-disabled:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/40" aria-label="Previous page"><ChevronLeft className="size-4" /></button>
               <span className="px-2 font-mono text-[10px] text-slate-400">Page {currentPage} / {pageCount}</span>
-              <button disabled={currentPage === pageCount} onClick={() => { setPage((value) => Math.min(pageCount, value + 1)); setSelected([]); }} className="grid size-8 place-items-center rounded-lg border border-white/8 text-slate-400 disabled:opacity-30 hover:not-disabled:bg-white/5" aria-label="Next page"><ChevronRight className="size-4" /></button>
+              <button disabled={currentPage === pageCount || loading} onClick={() => { setPage((value) => Math.min(pageCount, value + 1)); setSelected([]); }} className="grid size-9 place-items-center rounded-lg border border-white/8 text-slate-400 disabled:opacity-30 hover:not-disabled:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/40" aria-label="Next page"><ChevronRight className="size-4" /></button>
             </div>
           </footer>
         </section>
@@ -199,7 +204,7 @@ function IssueRow({ issue, selected, onSelect }: { issue: AdminIssue; selected: 
       <td className="max-w-[170px] px-3 py-3 text-[10px] text-slate-400"><span className="line-clamp-2">{issue.department}</span></td>
       <td className="px-3 py-3"><StatusBadge status={issue.status} /></td>
       <td className="px-3 py-3 font-mono text-[10px] text-slate-500">{formatDate(issue.submittedAt)}</td>
-      <td className="px-3 py-3"><button className="grid size-8 place-items-center rounded-lg text-slate-600 opacity-0 transition hover:bg-white/5 hover:text-white group-hover:opacity-100" aria-label={`Actions for ${issue.id}`}><MoreHorizontal className="size-4" /></button></td>
+      <td className="px-3 py-3"><Link href={`/admin/issues/${issue.id}`} className="grid size-8 place-items-center rounded-lg text-slate-600 opacity-0 transition hover:bg-white/5 hover:text-white focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-300/40 group-hover:opacity-100" aria-label={`Open ${issue.trackingCode ?? issue.id}`}><ArrowUpRight className="size-4" /></Link></td>
     </tr>
   );
 }
@@ -214,6 +219,7 @@ function IssueMobileCard({ issue, selected, onSelect }: { issue: AdminIssue; sel
           <h2 className="mt-1.5 text-sm font-medium leading-snug text-slate-100">{issue.title}</h2>
           <p className="mt-1 line-clamp-2 text-[10px] leading-4 text-slate-500">{issue.location} · {issue.category}</p>
           <div className="mt-3 flex flex-wrap gap-2"><SeverityBadge severity={issue.severity} /><StatusBadge status={issue.status} /></div>
+          <p className="mt-2 line-clamp-1 text-[10px] text-slate-600">{issue.department} · Updated {issue.lastUpdated}</p>
         </Link>
       </div>
     </article>
@@ -221,11 +227,7 @@ function IssueMobileCard({ issue, selected, onSelect }: { issue: AdminIssue; sel
 }
 
 function FilterSelect({ label, value, options, onChange }: { label: string; value: string; options: readonly string[]; onChange: (value: string) => void }) {
-  return <label className="relative"><span className="sr-only">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 min-w-36 appearance-none rounded-lg border border-white/8 bg-slate-950/60 px-3 pr-8 text-xs text-slate-300 outline-none focus:border-teal-400/40">{options.map((option) => <option key={option}>{option}</option>)}</select><ChevronDownIcon /></label>;
-}
-
-function ChevronDownIcon() {
-  return <svg viewBox="0 0 20 20" fill="none" className="pointer-events-none absolute right-2.5 top-1/2 size-3 -translate-y-1/2 text-slate-600"><path d="m6 8 4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+  return <label className="relative"><span className="sr-only">{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 min-w-36 appearance-none rounded-lg border border-white/8 bg-slate-950/60 px-3 pr-8 text-xs text-slate-300 outline-none focus:border-teal-400/40 focus:ring-2 focus:ring-teal-400/10">{options.map((option) => <option key={option}>{option}</option>)}</select><ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3 -translate-y-1/2 text-slate-600" /></label>;
 }
 
 function SortableHeader({ label, active, desc, onClick }: { label: string; active: boolean; desc: boolean; onClick: () => void }) {
@@ -233,7 +235,17 @@ function SortableHeader({ label, active, desc, onClick }: { label: string; activ
 }
 
 function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
-  return <label className="inline-grid size-4 shrink-0 cursor-pointer place-items-center"><span className="sr-only">{label}</span><input type="checkbox" checked={checked} onChange={onChange} className="size-4 rounded border-white/15 bg-slate-950 accent-teal-400" /></label>;
+  return <label className="-m-3 inline-grid size-10 shrink-0 cursor-pointer place-items-center rounded-lg focus-within:ring-2 focus-within:ring-teal-300/40"><span className="sr-only">{label}</span><input type="checkbox" checked={checked} onChange={onChange} className="size-4 rounded border-white/15 bg-slate-950 accent-teal-400" /></label>;
+}
+
+function IssueRowSkeleton() {
+  return Array.from({ length: 7 }).map((_, index) => (
+    <tr key={index} className="animate-pulse">
+      <td className="px-4 py-4"><span className="block size-4 rounded bg-white/5" /></td>
+      <td className="px-3 py-4"><span className="block h-3 w-20 rounded bg-white/5" /><span className="mt-2 block h-3 w-52 rounded bg-white/[0.035]" /></td>
+      {Array.from({ length: 7 }).map((__, cell) => <td key={cell} className="px-3 py-4"><span className="block h-3 w-20 rounded bg-white/[0.035]" /></td>)}
+    </tr>
+  ));
 }
 
 function formatDate(value: string) {
