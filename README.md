@@ -157,13 +157,18 @@ Set:
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api/
+APP_URL=http://localhost:3000
 NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.your_public_mapbox_token
 NEXT_PUBLIC_MAP_STYLE_URL=mapbox://styles/mapbox/dark-v11
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
 NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=your_unsigned_upload_preset
+# Optional: enables Google Search Console ownership verification.
+GOOGLE_SITE_VERIFICATION=
 ```
 
 Only a public `pk.` Mapbox token may be placed in a `NEXT_PUBLIC_` variable.
+Set `APP_URL` to the canonical production origin when deploying so social
+metadata, the sitemap, and structured data use the public domain.
 
 ### 3. Configure the backend
 

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -11,6 +12,14 @@ import {
 
 import { GuestOnly } from "@/components/auth/guest-only";
 import { BeaconWordmark } from "@/components/shared/beacon-mark";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+    noarchive: true,
+  },
+};
 
 const accessSteps = [
   {

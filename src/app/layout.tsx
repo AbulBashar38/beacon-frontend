@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Manrope } from "next/font/google";
 import "mapbox-gl/dist/mapbox-gl.css";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/auth-context";
+import { getSiteUrl, siteConfig } from "@/lib/site-config";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,35 +22,73 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.APP_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(getSiteUrl()),
+  applicationName: siteConfig.name,
   title: {
-    default: "Beacon — Civic Infrastructure Intelligence",
+    default: siteConfig.title,
     template: "%s · Beacon",
   },
-  description:
-    "Beacon lets citizens report public infrastructure problems and helps government teams triage, map, and resolve them — an AI-powered civic operations platform.",
+  description: siteConfig.description,
+  keywords: [...siteConfig.keywords],
+  authors: [{ name: siteConfig.name }],
+  creator: siteConfig.name,
+  publisher: siteConfig.name,
+  category: "Civic technology",
+  referrer: "origin-when-cross-origin",
+  formatDetection: {
+    address: false,
+    email: false,
+    telephone: false,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   openGraph: {
     type: "website",
-    locale: "en_BD",
-    title: "Beacon — Civic Infrastructure Intelligence",
-    description:
-      "Your street sends a signal. The right team gets to work.",
-    images: [
-      {
-        url: "/og.png",
-        width: 1730,
-        height: 909,
-        alt: "Beacon civic signal network",
-      },
-    ],
+    locale: siteConfig.locale,
+    siteName: siteConfig.name,
+    title: siteConfig.title,
+    description: siteConfig.socialDescription,
+    images: [siteConfig.ogImage],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Beacon — Civic Infrastructure Intelligence",
-    description:
-      "Your street sends a signal. The right team gets to work.",
-    images: ["/og.png"],
+    title: siteConfig.title,
+    description: siteConfig.socialDescription,
+    images: [siteConfig.ogImage.url],
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: siteConfig.name,
+  },
+  verification: process.env.GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.GOOGLE_SITE_VERIFICATION }
+    : undefined,
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  colorScheme: "light dark",
+  themeColor: [
+    {
+      media: "(prefers-color-scheme: light)",
+      color: siteConfig.backgroundColor,
+    },
+    {
+      media: "(prefers-color-scheme: dark)",
+      color: siteConfig.themeColor,
+    },
+  ],
 };
 
 export default function RootLayout({
@@ -59,10 +98,12 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang={siteConfig.language}
       className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col"><AuthProvider>{children}</AuthProvider></body>
+      <body className="flex min-h-full flex-col">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

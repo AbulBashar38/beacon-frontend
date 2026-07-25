@@ -6,6 +6,12 @@ import { AdminAuthGuard } from "@/components/auth/admin-auth-guard";
 export const metadata: Metadata = {
   title: "Operations Dashboard",
   description: "Beacon national civic infrastructure operations dashboard.",
+  robots: {
+    index: false,
+    follow: false,
+    noarchive: true,
+    noimageindex: true,
+  },
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
