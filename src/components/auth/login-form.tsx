@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion, AnimatePresence } from "motion/react";
-import { Loader2, ArrowRight, CheckCircle2, ShieldCheck } from "lucide-react";
+import { Loader2, ArrowRight, CheckCircle2, KeyRound, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,12 +26,19 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+const demoAdminCredentials = {
+  email: "abulbasarofficial5403+admin@gmail.com",
+  password: "12345678Aa#",
+} as const;
+
 export function LoginForm() {
   const router = useRouter();
   const { login } = useAuth();
   const {
     register,
     handleSubmit,
+    setValue,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -42,6 +49,26 @@ export function LoginForm() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [destination, setDestination] = useState("/");
+  const [demoFilled, setDemoFilled] = useState(false);
+
+  function fillDemoAdminCredentials() {
+    setValue("email", demoAdminCredentials.email, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+    setValue("password", demoAdminCredentials.password, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+    setValue("remember", false, {
+      shouldDirty: true,
+    });
+    clearErrors();
+    setServerError(null);
+    setDemoFilled(true);
+  }
 
   const onSubmit = handleSubmit(async (values) => {
     setServerError(null);
@@ -87,6 +114,49 @@ export function LoginForm() {
           />
 
           <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
+            <section
+              aria-labelledby="admin-demo-title"
+              className="rounded-2xl border border-primary/15 bg-primary/[0.045] p-4"
+            >
+              <div className="flex items-start gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-primary/15 bg-white text-primary shadow-sm">
+                  <ShieldCheck className="size-4.5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 id="admin-demo-title" className="text-sm font-semibold text-foreground">
+                      Explore the admin workspace
+                    </h2>
+                    <span className="rounded-full border border-primary/15 bg-white/70 px-2 py-0.5 font-mono text-[8px] font-semibold uppercase tracking-[0.1em] text-primary">
+                      Hackathon demo
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Fill the showcase account to explore national metrics, the live map, issue triage, and report updates.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-3 h-11 w-full border-primary/15 bg-white text-foreground shadow-sm hover:border-primary/25 hover:bg-white hover:text-primary"
+                onClick={fillDemoAdminCredentials}
+                disabled={isSubmitting}
+              >
+                {demoFilled ? <CheckCircle2 /> : <KeyRound />}
+                {demoFilled ? "Admin credentials added" : "Use admin demo account"}
+              </Button>
+              <p
+                role="status"
+                aria-live="polite"
+                className="mt-2 text-center text-[10px] leading-4 text-muted-foreground"
+              >
+                {demoFilled
+                  ? "The form is ready. Select Sign in to open the admin dashboard."
+                  : "For judging and product exploration only. Remember me will be turned off."}
+              </p>
+            </section>
+
             {serverError ? (
               <FormAlert variant="error">{serverError}</FormAlert>
             ) : null}
@@ -103,7 +173,7 @@ export function LoginForm() {
                 autoComplete="email"
                 placeholder="you@example.com"
                 aria-invalid={!!errors.email}
-                {...register("email")}
+                {...register("email", { onChange: () => setDemoFilled(false) })}
               />
             </Field>
 
@@ -118,7 +188,7 @@ export function LoginForm() {
                 autoComplete="current-password"
                 placeholder="Enter your password"
                 aria-invalid={!!errors.password}
-                {...register("password")}
+                {...register("password", { onChange: () => setDemoFilled(false) })}
               />
             </Field>
 
