@@ -8,10 +8,10 @@ import { createIssueMapData } from "@/lib/admin-map-data";
 import type { AdminIssue } from "@/lib/admin-issues";
 import { cn } from "@/lib/utils";
 
-const heatLayer: LayerProps = {
+const heatLayer = {
   id: "admin-issue-heat",
   type: "heatmap",
-  maxzoom: 11,
+  maxzoom: 12,
   paint: {
     "heatmap-weight": ["interpolate", ["linear"], ["get", "severityScore"], 1, 0.25, 4, 1],
     "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 4, 0.85, 9, 2.4],
@@ -27,9 +27,9 @@ const heatLayer: LayerProps = {
     "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 4, 22, 9, 54],
     "heatmap-opacity": 0.9,
   },
-};
+} satisfies LayerProps;
 
-const markerLayer: LayerProps = {
+const markerLayer = {
   id: "admin-issue-markers",
   type: "circle",
   paint: {
@@ -39,7 +39,7 @@ const markerLayer: LayerProps = {
     "circle-stroke-color": "#f8fafc",
     "circle-stroke-width": 1.5,
   },
-};
+} satisfies LayerProps;
 
 export function OverviewMap({ issues }: { issues: AdminIssue[] }) {
   const mapRef = useRef<MapRef>(null);
@@ -107,7 +107,14 @@ export function OverviewMap({ issues }: { issues: AdminIssue[] }) {
       >
         <NavigationControl position="top-right" showCompass={false} />
         <Source id="dashboard-issues" type="geojson" data={mapData}>
-          <Layer {...(mode === "heat" ? heatLayer : markerLayer)} />
+          <Layer
+            {...heatLayer}
+            layout={{ visibility: mode === "heat" ? "visible" : "none" }}
+          />
+          <Layer
+            {...markerLayer}
+            layout={{ visibility: mode === "markers" ? "visible" : "none" }}
+          />
         </Source>
       </Map>
     </div>
@@ -115,5 +122,5 @@ export function OverviewMap({ issues }: { issues: AdminIssue[] }) {
 }
 
 function MapModeButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
-  return <button onClick={onClick} className={cn("flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[11px] font-medium transition", active ? "bg-teal-400/15 text-teal-300" : "text-slate-500 hover:text-slate-200")}>{icon}{label}</button>;
+  return <button type="button" aria-pressed={active} onClick={onClick} className={cn("flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[11px] font-medium transition", active ? "bg-teal-400/15 text-teal-300" : "text-slate-500 hover:text-slate-200")}>{icon}{label}</button>;
 }

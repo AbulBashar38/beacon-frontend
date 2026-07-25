@@ -29,17 +29,20 @@ import {
 import { SeverityBadge, StatusBadge } from "@/components/shared/issue-badges";
 import { Button } from "@/components/ui/button";
 import { useReports } from "@/hooks/use-reports";
-import { createIssueMapData } from "@/lib/admin-map-data";
+import { createDistrictMapData, createIssueMapData } from "@/lib/admin-map-data";
 import { issueCategories, issueSeverities, issueStatuses, type AdminIssue } from "@/lib/admin-issues";
 import { cn } from "@/lib/utils";
 
 type MapMode = "heat" | "markers" | "clusters" | "districts" | "severity";
-type SelectedContext = { kind: "issue"; issue: AdminIssue } | { kind: "cluster"; count: number; longitude: number; latitude: number };
+type SelectedContext =
+  | { kind: "issue"; issue: AdminIssue }
+  | { kind: "cluster"; count: number; longitude: number; latitude: number }
+  | { kind: "district"; district: string; count: number; criticalCount: number };
 
-const heatLayer: LayerProps = {
+const heatLayer = {
   id: "live-heat",
   type: "heatmap",
-  maxzoom: 11,
+  maxzoom: 13,
   paint: {
     "heatmap-weight": ["interpolate", ["linear"], ["get", "severityScore"], 1, 0.25, 4, 1],
     "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 4, 0.9, 9, 2.6],
@@ -47,9 +50,9 @@ const heatLayer: LayerProps = {
     "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 4, 24, 9, 58],
     "heatmap-opacity": 0.92,
   },
-};
+} satisfies LayerProps;
 
-const markerLayer: LayerProps = {
+const markerLayer = {
   id: "live-markers",
   type: "circle",
   filter: ["!", ["has", "point_count"]],
@@ -60,9 +63,9 @@ const markerLayer: LayerProps = {
     "circle-stroke-width": 2,
     "circle-opacity": 0.9,
   },
-};
+} satisfies LayerProps;
 
-const severityLayer: LayerProps = {
+const severityLayer = {
   id: "live-severity",
   type: "circle",
   filter: ["!", ["has", "point_count"]],
@@ -73,9 +76,9 @@ const severityLayer: LayerProps = {
     "circle-stroke-width": 1.5,
     "circle-opacity": 0.88,
   },
-};
+} satisfies LayerProps;
 
-const clusterLayer: LayerProps = {
+const clusterLayer = {
   id: "live-clusters",
   type: "circle",
   filter: ["has", "point_count"],
@@ -85,35 +88,50 @@ const clusterLayer: LayerProps = {
     "circle-stroke-color": "rgba(255,255,255,.75)",
     "circle-stroke-width": 2,
   },
-};
+} satisfies LayerProps;
 
-const clusterCountLayer: LayerProps = {
+const clusterCountLayer = {
   id: "live-cluster-count",
   type: "symbol",
   filter: ["has", "point_count"],
   layout: { "text-field": ["get", "point_count_abbreviated"], "text-size": 11 },
   paint: { "text-color": "#07111f" },
-};
+} satisfies LayerProps;
 
-const districtLayer: LayerProps = {
-  id: "live-districts",
+const clusterPointLayer = {
+  id: "live-cluster-points",
   type: "circle",
   filter: ["!", ["has", "point_count"]],
   paint: {
-    "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 15, 9, 28],
-    "circle-color": "rgba(20,184,166,.22)",
-    "circle-stroke-color": "#2dd4bf",
-    "circle-stroke-width": 1.5,
+    "circle-radius": 7,
+    "circle-color": "#2dd4bf",
+    "circle-stroke-color": "#f8fafc",
+    "circle-stroke-width": 2,
+    "circle-opacity": 0.9,
   },
-};
+} satisfies LayerProps;
 
-const districtLabelLayer: LayerProps = {
+const districtLayer = {
+  id: "live-districts",
+  type: "circle",
+  paint: {
+    "circle-radius": ["interpolate", ["linear"], ["get", "issueCount"], 1, 17, 10, 29, 50, 42],
+    "circle-color": ["case", [">", ["get", "criticalCount"], 0], "rgba(239,68,68,.3)", "rgba(20,184,166,.25)"],
+    "circle-stroke-color": "#2dd4bf",
+    "circle-stroke-width": 2,
+  },
+} satisfies LayerProps;
+
+const districtLabelLayer = {
   id: "live-district-labels",
   type: "symbol",
-  filter: ["!", ["has", "point_count"]],
-  layout: { "text-field": ["get", "district"], "text-size": 10, "text-offset": [0, 2.1] },
+  layout: {
+    "text-field": ["concat", ["get", "district"], " · ", ["to-string", ["get", "issueCount"]]],
+    "text-size": 10,
+    "text-offset": [0, 2.7],
+  },
   paint: { "text-color": "#ccfbf1", "text-halo-color": "#0f172a", "text-halo-width": 1 },
-};
+} satisfies LayerProps;
 
 const modes: Array<{ id: MapMode; label: string; icon: typeof Layers3 }> = [
   { id: "heat", label: "Heatmap", icon: Layers3 },
@@ -149,6 +167,7 @@ export function LiveMapWorkspace() {
     (department === "All departments" || issue.department === department)
   ), [category, department, district, division, reports, severity, status]);
   const geojson = useMemo(() => createIssueMapData(filteredIssues), [filteredIssues]);
+  const districtGeojson = useMemo(() => createDistrictMapData(filteredIssues), [filteredIssues]);
   const unmappedCount = filteredIssues.length - geojson.features.length;
   const divisions = useMemo(() => ["All divisions", ...Array.from(new Set(reports.map((issue) => issue.division))).sort()], [reports]);
   const districts = useMemo(() => [
@@ -162,7 +181,11 @@ export function LiveMapWorkspace() {
   const departments = useMemo(() => ["All departments", ...Array.from(new Set(reports.map((issue) => issue.department))).sort()], [reports]);
   const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
   const style = process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? "mapbox://styles/mapbox/dark-v11";
-  const interactiveIds = mode === "clusters" ? ["live-clusters", "live-markers"] : mode === "heat" ? [] : [mode === "severity" ? "live-severity" : mode === "districts" ? "live-districts" : "live-markers"];
+  const interactiveIds = mode === "clusters"
+    ? ["live-clusters", "live-cluster-points"]
+    : mode === "heat"
+      ? []
+      : [mode === "severity" ? "live-severity" : mode === "districts" ? "live-districts" : "live-markers"];
 
   useEffect(() => {
     const needsInitialFit = !hasFitInitialData.current && geojson.features.length > 0;
@@ -214,6 +237,15 @@ export function LiveMapWorkspace() {
   function handleMapClick(event: MapMouseEvent) {
     const feature = event.features?.[0];
     if (!feature?.properties) return;
+    if (mode === "districts" && feature.properties.district) {
+      setSelected({
+        kind: "district",
+        district: String(feature.properties.district),
+        count: Number(feature.properties.issueCount ?? 0),
+        criticalCount: Number(feature.properties.criticalCount ?? 0),
+      });
+      return;
+    }
     if (feature.properties.cluster) {
       const count = Number(feature.properties.point_count ?? 0);
       setSelected({ kind: "cluster", count, longitude: event.lngLat.lng, latitude: event.lngLat.lat });
@@ -237,6 +269,8 @@ export function LiveMapWorkspace() {
         minZoom={5}
         maxZoom={13}
         maxBounds={[[87.5, 19.7], [93.3, 27.2]]}
+        scrollZoom={{ around: "center" }}
+        touchZoomRotate={{ around: "center" }}
         mapStyle={style}
         attributionControl={false}
         interactiveLayerIds={interactiveIds}
@@ -249,12 +283,25 @@ export function LiveMapWorkspace() {
         <NavigationControl position="bottom-right" showCompass />
         <FullscreenControl position="bottom-right" />
         <ScaleControl position="bottom-left" unit="metric" />
-        <Source id="live-issues" type="geojson" data={geojson} cluster={mode === "clusters" || mode === "districts"} clusterMaxZoom={10} clusterRadius={54}>
-          {mode === "heat" && <Layer {...heatLayer} />}
-          {mode === "markers" && <Layer {...markerLayer} />}
-          {mode === "severity" && <Layer {...severityLayer} />}
-          {mode === "clusters" && <><Layer {...clusterLayer} /><Layer {...clusterCountLayer} /><Layer {...markerLayer} /></>}
-          {mode === "districts" && <><Layer {...clusterLayer} /><Layer {...clusterCountLayer} /><Layer {...districtLayer} /><Layer {...districtLabelLayer} /></>}
+        <Source id="live-issues" type="geojson" data={geojson}>
+          <Layer {...heatLayer} layout={{ visibility: mode === "heat" ? "visible" : "none" }} />
+          <Layer {...markerLayer} layout={{ visibility: mode === "markers" ? "visible" : "none" }} />
+          <Layer {...severityLayer} layout={{ visibility: mode === "severity" ? "visible" : "none" }} />
+        </Source>
+        <Source id="live-issue-clusters" type="geojson" data={geojson} cluster clusterMaxZoom={10} clusterRadius={54}>
+          <Layer {...clusterLayer} layout={{ visibility: mode === "clusters" ? "visible" : "none" }} />
+          <Layer
+            {...clusterCountLayer}
+            layout={{ ...clusterCountLayer.layout, visibility: mode === "clusters" ? "visible" : "none" }}
+          />
+          <Layer {...clusterPointLayer} layout={{ visibility: mode === "clusters" ? "visible" : "none" }} />
+        </Source>
+        <Source id="live-district-summaries" type="geojson" data={districtGeojson}>
+          <Layer {...districtLayer} layout={{ visibility: mode === "districts" ? "visible" : "none" }} />
+          <Layer
+            {...districtLabelLayer}
+            layout={{ ...districtLabelLayer.layout, visibility: mode === "districts" ? "visible" : "none" }}
+          />
         </Source>
       </Map>
 
@@ -275,7 +322,7 @@ export function LiveMapWorkspace() {
       <div className="absolute bottom-6 left-1/2 z-20 flex max-w-[calc(100%-2rem)] -translate-x-1/2 gap-1 overflow-x-auto rounded-xl border border-white/10 bg-slate-950/92 p-1.5 shadow-2xl backdrop-blur-xl">
         {modes.map((item) => {
           const Icon = item.icon;
-          return <button key={item.id} onClick={() => { setMode(item.id); setSelected(null); }} className={cn("flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[11px] font-medium transition", mode === item.id ? "bg-teal-400/15 text-teal-300 ring-1 ring-inset ring-teal-300/10" : "text-slate-500 hover:bg-white/5 hover:text-white")}><Icon className="size-3.5" />{item.label}</button>;
+          return <button type="button" aria-pressed={mode === item.id} key={item.id} onClick={() => { setMode(item.id); setSelected(null); }} className={cn("flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[11px] font-medium transition", mode === item.id ? "bg-teal-400/15 text-teal-300 ring-1 ring-inset ring-teal-300/10" : "text-slate-500 hover:bg-white/5 hover:text-white")}><Icon className="size-3.5" />{item.label}</button>;
         })}
       </div>
 
@@ -315,11 +362,27 @@ function MapFilters(props: {
 }
 
 function IntelligenceDrawer({ selected, visibleIssues, onClose }: { selected: SelectedContext; visibleIssues: AdminIssue[]; onClose: () => void }) {
-  const related = selected.kind === "issue" ? visibleIssues.filter((issue) => issue.district === selected.issue.district) : visibleIssues;
-  const title = selected.kind === "issue" ? `${selected.issue.location}, ${selected.issue.district}` : "Selected issue cluster";
+  const selectedDistrict = selected.kind === "issue"
+    ? selected.issue.district
+    : selected.kind === "district"
+      ? selected.district
+      : null;
+  const related = selectedDistrict
+    ? visibleIssues.filter((issue) => issue.district === selectedDistrict)
+    : visibleIssues;
+  const title = selected.kind === "issue"
+    ? `${selected.issue.location}, ${selected.issue.district}`
+    : selected.kind === "district"
+      ? `${selected.district} district`
+      : "Selected issue cluster";
+  const contextSummary = selected.kind === "cluster"
+    ? `${selected.count} reports in this cluster`
+    : selected.kind === "district"
+      ? `${selected.count} mapped reports · ${selected.criticalCount} critical`
+      : `${related.length} reports in district`;
   return (
     <aside className="absolute bottom-4 right-4 top-28 z-30 w-[380px] max-w-[calc(100%-2rem)] overflow-hidden rounded-2xl border border-white/10 bg-slate-950/95 shadow-2xl backdrop-blur-xl">
-      <header className="border-b border-white/8 p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-teal-300">Location intelligence</p><h2 className="mt-1 font-heading text-lg font-bold text-white">{title}</h2><p className="mt-1 text-[10px] text-slate-500">{selected.kind === "cluster" ? `${selected.count} reports in this cluster` : `${related.length} reports in district`}</p></div><button onClick={onClose} className="grid size-8 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-white/5 hover:text-white" aria-label="Close intelligence drawer"><X className="size-4" /></button></div></header>
+      <header className="border-b border-white/8 p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-teal-300">Location intelligence</p><h2 className="mt-1 font-heading text-lg font-bold text-white">{title}</h2><p className="mt-1 text-[10px] text-slate-500">{contextSummary}</p></div><button onClick={onClose} className="grid size-8 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-white/5 hover:text-white" aria-label="Close intelligence drawer"><X className="size-4" /></button></div></header>
       <div className="h-[calc(100%-95px)] overflow-y-auto">
         <div className="grid grid-cols-3 gap-2 p-4">
           <DrawerMetric label="Total issues" value={related.length} />
